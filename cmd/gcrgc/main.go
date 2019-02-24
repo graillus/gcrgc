@@ -4,42 +4,60 @@ import (
 	"fmt"
 	"os"
 	"strings"
-
-	"github.com/graillus/gcrgc/gcloud"
 )
+
+type tags []Tag
+type taskList map[string]tags
 
 func main() {
 	settings := ParseArgs()
 
-	repo := gcloud.NewRepository(settings.Repository)
+	cli := NewCli()
+	gcloud := NewGCloud(cli)
 
 	fmt.Printf("Fetching images in repository [%s]\n", settings.Repository)
-	images := repo.ListImages()
+	images := gcloud.ListImages(settings.Repository)
 	fmt.Printf("%d images found\n", len(images))
 
-	var includedImages []gcloud.Image
+	r := newReport()
+	tasks := getTaskList(gcloud, images, settings)
+	for k, v := range tasks {
+		fmt.Printf("Deleting %d matches for image [%s]\n", len(v), k)
+		for _, t := range v {
+			fmt.Printf("Deleting %s %s\n", t.Digest, strings.Join(t.Tags, ", "))
+			gcloud.Delete(k, &t, settings.DryRun)
+			r.reportTag(t)
+		}
+	}
+
+	fmt.Printf("Done\n\n")
+	fmt.Printf("Deleted tags: %d/%d\n", r.TotalDeleted(), r.Total())
+}
+
+func getTaskList(gcloud *GCloud, images []Image, s *Settings) taskList {
+	var includedImages []Image
 	var notFoundImages []string
-	if settings.AllImages == true {
-		includedImages, notFoundImages = excludeImages(images, settings)
+	if s.AllImages == true {
+		includedImages, notFoundImages = excludeImages(images, s)
 	} else {
-		includedImages, notFoundImages = includeImages(images, settings)
+		includedImages, notFoundImages = includeImages(images, s)
 	}
 
 	if len(notFoundImages) > 0 {
 		os.Exit(1)
 	}
 
-	var total, totalDeleted = 0, 0
+	tasks := make(taskList)
 	for _, image := range includedImages {
-		var filteredTags []gcloud.Tag
-		tags := image.ListTags(settings.Date)
+		var filteredTags tags
+		tags := gcloud.ListTags(image.Name, s.Date)
 		for _, tag := range tags {
-			if settings.UntaggedOnly && tag.IsTagged() {
+			if s.UntaggedOnly && tag.IsTagged() {
 				continue
 			}
 			exclude := false
-			if len(settings.ExcludedTags) > 0 {
-				for _, excl := range settings.ExcludedTags {
+			if len(s.ExcludedTags) > 0 {
+				for _, excl := range s.ExcludedTags {
 					if tag.ContainsTag(excl) {
 						exclude = true
 					}
@@ -49,28 +67,19 @@ func main() {
 				filteredTags = append(filteredTags, tag)
 			}
 		}
-
+		tasks[image.Name] = filteredTags
 		fmt.Printf("%d matches for image [%s]\n", len(filteredTags), image.Name)
-		for _, tag := range filteredTags {
-			total++
-			fmt.Printf("Deleting %s %s\n", tag.Digest, strings.Join(tag.Tags, ", "))
-			tag.Delete(image.Name, settings.DryRun)
-			if tag.IsRemoved {
-				totalDeleted++
-			}
-		}
 	}
 
-	fmt.Printf("Done\n\n")
-	fmt.Printf("Deleted tags: %d/%d\n", totalDeleted, total)
+	return tasks
 }
 
-func excludeImages(images []gcloud.Image, settings *Settings) ([]gcloud.Image, []string) {
+func excludeImages(images []Image, settings *Settings) ([]Image, []string) {
 	var notFoundImages []string
 	includedImages := images
 	for _, img := range settings.ExcludedImages {
 		imageName := settings.Repository + "/" + img
-		if !gcloud.ContainsImage(imageName, images) {
+		if !ContainsImage(imageName, images) {
 			notFoundImages = append(notFoundImages, imageName)
 			fmt.Printf("Cannot exclude image [%s]: it does not exist in this repository\n", imageName)
 		} else {
@@ -85,16 +94,16 @@ func excludeImages(images []gcloud.Image, settings *Settings) ([]gcloud.Image, [
 	return includedImages, notFoundImages
 }
 
-func includeImages(images []gcloud.Image, settings *Settings) ([]gcloud.Image, []string) {
-	var includedImages []gcloud.Image
+func includeImages(images []Image, settings *Settings) ([]Image, []string) {
+	var includedImages []Image
 	var notFoundImages []string
 	for _, img := range settings.Images {
 		imageName := settings.Repository + "/" + img
-		if !gcloud.ContainsImage(imageName, images) {
+		if !ContainsImage(imageName, images) {
 			notFoundImages = append(notFoundImages, imageName)
 			fmt.Printf("Cannot include image [%s]: it does not exist in this repository\n", imageName)
 		} else {
-			includedImages = append(includedImages, *gcloud.NewImage(imageName))
+			includedImages = append(includedImages, *NewImage(imageName))
 		}
 	}
 
