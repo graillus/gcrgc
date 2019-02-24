@@ -22,7 +22,7 @@ notifications:
 install: true
 
 script:
-  - go test -race -coverprofile=profile.out -covermode=atomic cmd/gcrgc/*
+  - go test -race -coverprofile=coverage.txt -covermode=atomic cmd/gcrgc/*
   - go vet ./...
 
 # push results to CodeCov
