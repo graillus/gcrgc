@@ -1,6 +1,8 @@
 gcrgc
 =====
 
+[![License MIT](https://img.shields.io/github/llicense/graillus/gcrgc.svg)](https://github.com/graillus/gcrgc/blob/master/LICENSE)
+
 Clean up images on the Google Container Registry.
 
 Initially based on the [gist](https://gist.github.com/ahmetb/7ce6d741bd5baa194a3fac6b1fec8bb7) by [Ahmet Alp Balkan](https://gist.github.com/ahmetb), and rewritten in Go.
