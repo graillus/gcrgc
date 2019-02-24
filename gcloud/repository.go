@@ -2,6 +2,7 @@ package gcloud
 
 import (
 	"encoding/json"
+	"log"
 	"strings"
 )
 
@@ -26,7 +27,10 @@ func (r Repository) ListImages() []Image {
 		strings.Join([]string{"--limit", "999999"}, "="),
 	}
 
-	output := Exec(parts)
+	output, err := Exec(parts)
+	if err != nil {
+		log.Fatalf("Command failed with %s\n", err)
+	}
 
 	var images []Image
 	json.Unmarshal(output, &images)

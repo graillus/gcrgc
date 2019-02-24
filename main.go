@@ -1,53 +1,102 @@
 package main
 
 import (
-	"flag"
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/graillus/gcrgc/gcloud"
 )
 
-// Settings contains app Configuration
-type Settings struct {
-	Repository string
-	Images     []string
-	Date       string
-}
-
-// ParseArgs parses compmand-line args and returns a Settings instance
-func ParseArgs() *Settings {
-	settings := Settings{}
-	const (
-		defaultRepository = ""
-	)
-
-	flag.StringVar(&settings.Repository, "repository", "", "Name of the target repository")
-	flag.StringVar(&settings.Repository, "image", "", "Name of the taget image. Mutliple values allowed")
-
-	flag.Parse()
-
-	return &settings
-}
-
 func main() {
 	settings := ParseArgs()
 
-	fmt.Println(settings)
+	repo := gcloud.NewRepository(settings.Repository)
 
-	repoName := "eu.gcr.io/devfactory-etsglobal"
-	repo := gcloud.NewRepository(repoName)
-
-	fmt.Printf("Fetching images in repository [%s]\n", repoName)
+	fmt.Printf("Fetching images in repository [%s]\n", settings.Repository)
 	images := repo.ListImages()
 	fmt.Printf("%d images found\n", len(images))
-	for i := 0; i < len(images); i++ {
-		fmt.Println(images[i].Name)
+
+	var includedImages []gcloud.Image
+	var notFoundImages []string
+	if settings.AllImages == true {
+		includedImages, notFoundImages = excludeImages(images, settings)
+	} else {
+		includedImages, notFoundImages = includeImages(images, settings)
 	}
 
-	image := gcloud.NewImage("eu.gcr.io/devfactory-etsglobal/nginx")
-	tags := image.ListTags()
-	for i := 0; i < len(tags); i++ {
-		fmt.Println(tags[i].Digest)
+	if len(notFoundImages) > 0 {
+		os.Exit(1)
 	}
 
+	var total, totalDeleted = 0, 0
+	for _, image := range includedImages {
+		var filteredTags []gcloud.Tag
+		tags := image.ListTags(settings.Date)
+		for _, tag := range tags {
+			if settings.UntaggedOnly && tag.IsTagged() {
+				continue
+			}
+			exclude := false
+			if len(settings.ExcludedTags) > 0 {
+				for _, excl := range settings.ExcludedTags {
+					if tag.ContainsTag(excl) {
+						exclude = true
+					}
+				}
+			}
+			if !exclude {
+				filteredTags = append(filteredTags, tag)
+			}
+		}
+
+		fmt.Printf("%d matches for image [%s]\n", len(filteredTags), image.Name)
+		for _, tag := range filteredTags {
+			total++
+			fmt.Printf("Deleting %s %s\n", tag.Digest, strings.Join(tag.Tags, ", "))
+			tag.Delete(image.Name, settings.DryRun)
+			if tag.IsRemoved {
+				totalDeleted++
+			}
+		}
+	}
+
+	fmt.Printf("Done\n\n")
+	fmt.Printf("Deleted tags: %d/%d\n", totalDeleted, total)
+}
+
+func excludeImages(images []gcloud.Image, settings *Settings) ([]gcloud.Image, []string) {
+	var notFoundImages []string
+	includedImages := images
+	for _, img := range settings.ExcludedImages {
+		imageName := settings.Repository + "/" + img
+		if !gcloud.ContainsImage(imageName, images) {
+			notFoundImages = append(notFoundImages, imageName)
+			fmt.Printf("Cannot exclude image [%s]: it does not exist in this repository\n", imageName)
+		} else {
+			for i := 0; i < len(includedImages); i++ {
+				if includedImages[i].Name == imageName {
+					includedImages = append(includedImages[:i], includedImages[i+1:]...)
+				}
+			}
+		}
+	}
+
+	return includedImages, notFoundImages
+}
+
+func includeImages(images []gcloud.Image, settings *Settings) ([]gcloud.Image, []string) {
+	var includedImages []gcloud.Image
+	var notFoundImages []string
+	for _, img := range settings.Images {
+		imageName := settings.Repository + "/" + img
+		if !gcloud.ContainsImage(imageName, images) {
+			notFoundImages = append(notFoundImages, imageName)
+			fmt.Printf("Cannot include image [%s]: it does not exist in this repository\n", imageName)
+		} else {
+			includedImages = append(includedImages, *gcloud.NewImage(imageName))
+		}
+	}
+
+	return includedImages, notFoundImages
 }

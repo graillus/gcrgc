@@ -12,15 +12,15 @@ authenticated `gcloud` session for the project.
 
 Clean up untagged images under the `gcr.io/project-id/my-image` repository.
 ```
-gcrgc --repository=gcr.io/project-id/my-image --untagged-only
+gcrgc -repository=gcr.io/project-id -untagged-only my-image
 ```
 
 Clean up tagged and untagged images under the `gcr.io/project-id/my-image` repository older than 2019-01-01, excluding tags `master` and `latest`
 ```
-gcrgc --repository=gcr.io/project-id/my-image --date=2019-01-01 --exclude-tag=latest --exclude-tag=master
+gcrgc -repository=gcr.io/project-id -date=2019-01-01 -exclude-tag=latest -exclude-tag=master my-image
 ```
 
 Clean up tagged and untagged images under the entire project `gcr.io/project-id` older than 2019-01-01, excluding the images under `gcr.io/project-id/my-image`
 ```
-gcrgc --project-registry=gcr.io/project-id --date=2019-01-01 --exclude-image=my-image
+gcrgc -repository=gcr.io/project-id -all -date=2019-01-01 -exclude-image=my-image
 ```
