@@ -1,7 +1,9 @@
 gcrgc
 =====
 
-[![License MIT](https://img.shields.io/github/llicense/graillus/gcrgc.svg)](https://github.com/graillus/gcrgc/blob/master/LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/gojp/goreportcard)](https://goreportcard.com/report/github.com/gojp/goreportcard)
+[![GoDoc](https://godoc.org/github.com/graillus/gcrgc?status.svg)](https://godoc.org/github.com/graillus/gcrgc)
+[![License MIT](https://img.shields.io/github/license/graillus/gcrgc.svg)](https://github.com/graillus/gcrgc/blob/master/LICENSE)
 
 Clean up images on the Google Container Registry.
 
