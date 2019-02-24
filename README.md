@@ -11,6 +11,15 @@ Clean up images on the Google Container Registry.
 
 Initially based on the [gist](https://gist.github.com/ahmetb/7ce6d741bd5baa194a3fac6b1fec8bb7) by [Ahmet Alp Balkan](https://gist.github.com/ahmetb), and rewritten in Go.
 
+## Features
+
+- Remove images older than the date specified with option `-date`
+- Clean up multiple image repositories at once with option `-all`
+- Exclude some image repositories with option `-exclude-image`
+- Exclude images with certain tag(s) from deletion with option `-exclude-tag`
+- Only remove untagged images with `-untagged-only` flag
+- Dry-run mode with option `-dry-run` (don't actually delete images but get same output)
+
 ## Prerequisites
 authenticated `gcloud` session for the project.
 
