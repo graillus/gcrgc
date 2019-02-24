@@ -12,6 +12,23 @@ Initially based on the [gist](https://gist.github.com/ahmetb/7ce6d741bd5baa194a3
 ## Prerequisites
 authenticated `gcloud` session for the project.
 
+## Installation
+
+```
+go get github.com/graillus/gcrgc
+cd $GOPATH/src/github.com/graillus/gcrgc
+make build
+...
+```
+
+## Docker image
+
+```
+docker pull graillus/gcrgc
+```
+
+The docker image extends the google/cloud-sdk image, read the [documentation](https://hub.docker.com/r/google/cloud-sdk/) to learn how to authenticate using the docker image
+
 ## Usage
 
 Clean up untagged images under the `gcr.io/project-id/my-image` repository.

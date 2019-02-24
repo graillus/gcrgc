@@ -1,9 +1,4 @@
-package gcloud
-
-import (
-	"fmt"
-	"strings"
-)
+package main
 
 // Tag represents an Image tag
 type Tag struct {
@@ -32,31 +27,4 @@ func (t Tag) ContainsTag(tag string) bool {
 // IsTagged tells if the current Tag has at least one tag
 func (t Tag) IsTagged() bool {
 	return len(t.Tags) > 0
-}
-
-// Delete deletes the tag
-func (t *Tag) Delete(image string, dryRun bool) {
-	if dryRun {
-		t.IsRemoved = true
-
-		return
-	}
-
-	parts := []string{
-		"container",
-		"images",
-		"delete",
-		strings.Join([]string{image, t.Digest}, "@"),
-		"--force-delete-tags",
-		"--quiet",
-	}
-
-	_, err := Exec(parts)
-	if err != nil {
-		fmt.Printf("Unable to delete tag %s: %s\n", t.Digest, err)
-
-		return
-	}
-
-	t.IsRemoved = true
 }
