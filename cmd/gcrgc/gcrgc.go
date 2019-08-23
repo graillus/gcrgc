@@ -4,36 +4,13 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strings"
+
+	"github.com/graillus/gcrgc/pkg/gcrgc"
 )
 
-// Settings contains app Configuration
-type Settings struct {
-	Repository     string
-	Images         stringList
-	Date           string
-	UntaggedOnly   bool
-	DryRun         bool
-	AllImages      bool
-	ExcludedImages stringList
-	ExcludedTags   stringList
-}
-
-type stringList []string
-
-func (s *stringList) String() string {
-	return strings.Join(*s, ", ")
-}
-
-func (s *stringList) Set(value string) error {
-	*s = append(*s, value)
-
-	return nil
-}
-
 // ParseArgs parses compmand-line args and returns a Settings instance
-func ParseArgs() *Settings {
-	settings := Settings{}
+func ParseArgs() *gcrgc.Settings {
+	settings := gcrgc.Settings{}
 
 	flag.StringVar(&settings.Repository, "repository", "", "Clean all images from a given repository, e.g. \"gcr.io/project-id\". Some images can be excluded with -exclude-image option")
 	flag.StringVar(&settings.Date, "date", "", "Delete images older than YYYY-MM-DD")
@@ -73,4 +50,11 @@ func ParseArgs() *Settings {
 	}
 
 	return &settings
+}
+
+func main() {
+	settings := ParseArgs()
+
+	app := gcrgc.NewApp(settings)
+	app.Start()
 }

@@ -1,31 +1,64 @@
-package main
+package gcrgc
 
 import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/graillus/gcrgc/pkg/cmd"
+	"github.com/graillus/gcrgc/pkg/gcloud"
 )
 
-type tags []Tag
-type taskList map[string]tags
+// Settings contains app Configuration
+type Settings struct {
+	Repository     string
+	Images         stringList
+	Date           string
+	UntaggedOnly   bool
+	DryRun         bool
+	AllImages      bool
+	ExcludedImages stringList
+	ExcludedTags   stringList
+}
 
-func main() {
-	settings := ParseArgs()
+type stringList []string
 
-	cli := NewCli()
-	gcloud := NewGCloud(cli)
+func (s *stringList) String() string {
+	return strings.Join(*s, ", ")
+}
 
-	fmt.Printf("Fetching images in repository [%s]\n", settings.Repository)
-	images := gcloud.ListImages(settings.Repository)
+func (s *stringList) Set(value string) error {
+	*s = append(*s, value)
+
+	return nil
+}
+
+// App is the main application
+type App struct {
+	settings *Settings
+}
+
+// NewApp creates a new instance of the application
+func NewApp(s *Settings) *App {
+	return &App{s}
+}
+
+// Start the application
+func (app *App) Start() {
+	cli := cmd.NewCli()
+	gcloud := gcloud.NewGCloud(cli)
+
+	fmt.Printf("Fetching images in repository [%s]\n", app.settings.Repository)
+	images := gcloud.ListImages(app.settings.Repository)
 	fmt.Printf("%d images found\n", len(images))
 
 	r := newReport()
-	tasks := getTaskList(gcloud, images, settings)
+	tasks := getTaskList(gcloud, images, app.settings)
 	for k, v := range tasks {
 		fmt.Printf("Deleting %d matches for image [%s]\n", len(v), k)
 		for _, t := range v {
 			fmt.Printf("Deleting %s %s\n", t.Digest, strings.Join(t.Tags, ", "))
-			gcloud.Delete(k, &t, settings.DryRun)
+			gcloud.Delete(k, &t, app.settings.DryRun)
 			r.reportTag(t)
 		}
 	}
@@ -34,8 +67,11 @@ func main() {
 	fmt.Printf("Deleted tags: %d/%d\n", r.TotalDeleted(), r.Total())
 }
 
-func getTaskList(gcloud *GCloud, images []Image, s *Settings) taskList {
-	var includedImages []Image
+type tags []gcloud.Tag
+type taskList map[string]tags
+
+func getTaskList(gCloud *gcloud.GCloud, images []gcloud.Image, s *Settings) taskList {
+	var includedImages []gcloud.Image
 	var notFoundImages []string
 	if s.AllImages == true {
 		includedImages, notFoundImages = excludeImages(images, s)
@@ -50,7 +86,7 @@ func getTaskList(gcloud *GCloud, images []Image, s *Settings) taskList {
 	tasks := make(taskList)
 	for _, image := range includedImages {
 		var filteredTags tags
-		tags := gcloud.ListTags(image.Name, s.Date)
+		tags := gCloud.ListTags(image.Name, s.Date)
 		for _, tag := range tags {
 			if s.UntaggedOnly && tag.IsTagged() {
 				continue
@@ -74,12 +110,12 @@ func getTaskList(gcloud *GCloud, images []Image, s *Settings) taskList {
 	return tasks
 }
 
-func excludeImages(images []Image, settings *Settings) ([]Image, []string) {
+func excludeImages(images []gcloud.Image, settings *Settings) ([]gcloud.Image, []string) {
 	var notFoundImages []string
 	includedImages := images
 	for _, img := range settings.ExcludedImages {
 		imageName := settings.Repository + "/" + img
-		if !ContainsImage(imageName, images) {
+		if !gcloud.ContainsImage(imageName, images) {
 			notFoundImages = append(notFoundImages, imageName)
 			fmt.Printf("Cannot exclude image [%s]: it does not exist in this repository\n", imageName)
 		} else {
@@ -94,16 +130,16 @@ func excludeImages(images []Image, settings *Settings) ([]Image, []string) {
 	return includedImages, notFoundImages
 }
 
-func includeImages(images []Image, settings *Settings) ([]Image, []string) {
-	var includedImages []Image
+func includeImages(images []gcloud.Image, settings *Settings) ([]gcloud.Image, []string) {
+	var includedImages []gcloud.Image
 	var notFoundImages []string
 	for _, img := range settings.Images {
 		imageName := settings.Repository + "/" + img
-		if !ContainsImage(imageName, images) {
+		if !gcloud.ContainsImage(imageName, images) {
 			notFoundImages = append(notFoundImages, imageName)
 			fmt.Printf("Cannot include image [%s]: it does not exist in this repository\n", imageName)
 		} else {
-			includedImages = append(includedImages, *NewImage(imageName))
+			includedImages = append(includedImages, *gcloud.NewImage(imageName))
 		}
 	}
 

@@ -1,19 +1,21 @@
-package main
+package gcloud
 
 import (
 	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
+
+	"github.com/graillus/gcrgc/pkg/cmd"
 )
 
 // GCloud abstracts the gcloud cli
 type GCloud struct {
-	e CmdExecutor
+	e cmd.Executor
 }
 
 // NewGCloud creates a new instance of GCloud
-func NewGCloud(e CmdExecutor) *GCloud {
+func NewGCloud(e cmd.Executor) *GCloud {
 	return &GCloud{e}
 }
 
@@ -28,7 +30,7 @@ func (g GCloud) ListImages(repository string) []Image {
 		strings.Join([]string{"--limit", "999999"}, "="),
 	}
 
-	cmd := NewCmd("gcloud", args)
+	cmd := cmd.NewCmd("gcloud", args)
 	err := g.e.Exec(cmd)
 	if err != nil {
 		log.Fatalf("Command failed with %s\n", err)
@@ -56,7 +58,7 @@ func (g GCloud) ListTags(image string, minDate string) []Tag {
 		args = append(args, strings.Join([]string{"--filter", "timestamp.datetime<'" + minDate + "'"}, "="))
 	}
 
-	cmd := NewCmd("gcloud", args)
+	cmd := cmd.NewCmd("gcloud", args)
 	err := g.e.Exec(cmd)
 	if err != nil {
 		log.Fatalf("Command failed with %s\n", err)
@@ -85,7 +87,7 @@ func (g GCloud) Delete(image string, t *Tag, dryRun bool) {
 		"--quiet",
 	}
 
-	cmd := NewCmd("gcloud", args)
+	cmd := cmd.NewCmd("gcloud", args)
 	err := g.e.Exec(cmd)
 	if err != nil {
 		fmt.Printf("Unable to delete tag %s: %s\n", t.Digest, err)

@@ -1,4 +1,4 @@
-package main
+package gcloud
 
 // Tag represents an Image tag
 type Tag struct {

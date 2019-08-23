@@ -1,4 +1,4 @@
-package main
+package gcloud
 
 // Image represents a docker image inside repository
 type Image struct {
