@@ -1,4 +1,6 @@
-package main
+package gcrgc
+
+import "github.com/graillus/gcrgc/pkg/gcloud"
 
 type report struct {
 	total        int
@@ -17,9 +19,9 @@ func (r report) TotalDeleted() int {
 	return r.totalDeleted
 }
 
-func (r *report) reportTag(tag Tag) {
+func (r *report) reportImage(img gcloud.Image) {
 	r.total++
-	if tag.IsRemoved {
+	if img.IsRemoved {
 		r.totalDeleted++
 	}
 }

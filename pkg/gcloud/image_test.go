@@ -1,22 +1,22 @@
-package main
+package gcloud
 
 import "testing"
 
 var containsTagTest = []struct {
-	tag      Tag
+	img      Image
 	test     string
 	expected bool
 }{
-	{Tag{}, "some tag", false},
-	{Tag{Tags: []string{"not matching tag"}}, "some tag", false},
-	{Tag{Tags: []string{"not matching tag", "matching tag"}}, "matching tag", true},
+	{Image{}, "some tag", false},
+	{Image{Tags: []string{"not matching tag"}}, "some tag", false},
+	{Image{Tags: []string{"not matching tag", "matching tag"}}, "matching tag", true},
 }
 
 func TestContainsTag(t *testing.T) {
 	var actual bool
 
 	for _, test := range containsTagTest {
-		actual = test.tag.ContainsTag(test.test)
+		actual = test.img.ContainsTag(test.test)
 		if actual != test.expected {
 			t.Errorf("Expected ContainsTag to be %v, got %v instead", test.expected, actual)
 		}
@@ -24,19 +24,19 @@ func TestContainsTag(t *testing.T) {
 }
 
 var isTaggedTest = []struct {
-	tag      Tag
+	img      Image
 	expected bool
 }{
-	{Tag{}, false},
-	{Tag{Tags: []string{}}, false},
-	{Tag{Tags: []string{"a tag"}}, true},
+	{Image{}, false},
+	{Image{Tags: []string{}}, false},
+	{Image{Tags: []string{"a tag"}}, true},
 }
 
 func TestIsTagged(t *testing.T) {
 	var actual bool
 
 	for _, test := range isTaggedTest {
-		actual = test.tag.IsTagged()
+		actual = test.img.IsTagged()
 		if actual != test.expected {
 			t.Errorf("Expected IsTagged to be %v, got %v instead", test.expected, actual)
 		}

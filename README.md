@@ -15,7 +15,7 @@ Initially based on the [gist](https://gist.github.com/ahmetb/7ce6d741bd5baa194a3
 
 - Remove images older than the date specified with option `-date`
 - Clean up multiple image repositories at once with option `-all`
-- Exclude some image repositories with option `-exclude-image`
+- Exclude some image repositories with option `-exclude-repository`
 - Exclude images with certain tag(s) from deletion with option `-exclude-tag`
 - Only remove untagged images with `-untagged-only` flag
 - Dry-run mode with option `-dry-run` (don't actually delete images but get same output)
@@ -44,15 +44,15 @@ The docker image extends the google/cloud-sdk image, read the [documentation](ht
 
 Clean up untagged images under the `gcr.io/project-id/my-image` repository.
 ```
-gcrgc -repository=gcr.io/project-id -untagged-only my-image
+gcrgc -registry=gcr.io/project-id -untagged-only my-image
 ```
 
 Clean up tagged and untagged images under the `gcr.io/project-id/my-image` repository older than 2019-01-01, excluding tags `master` and `latest`
 ```
-gcrgc -repository=gcr.io/project-id -date=2019-01-01 -exclude-tag=latest -exclude-tag=master my-image
+gcrgc -registry=gcr.io/project-id -date=2019-01-01 -exclude-tag=latest -exclude-tag=master my-image
 ```
 
-Clean up tagged and untagged images under the entire project `gcr.io/project-id` older than 2019-01-01, excluding the images under `gcr.io/project-id/my-image`
+Clean up tagged and untagged images under the entire registry `gcr.io/project-id` older than 2019-01-01, excluding the images under `gcr.io/project-id/my-image`
 ```
-gcrgc -repository=gcr.io/project-id -all -date=2019-01-01 -exclude-image=my-image
+gcrgc -registry=gcr.io/project-id -all -date=2019-01-01 -exclude-repository=my-image
 ```

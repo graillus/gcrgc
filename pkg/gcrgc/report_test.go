@@ -1,7 +1,9 @@
-package main
+package gcrgc
 
 import (
 	"testing"
+
+	"github.com/graillus/gcrgc/pkg/gcloud"
 )
 
 func TestTotal(t *testing.T) {
@@ -32,15 +34,15 @@ func TestTotalDeleted(t *testing.T) {
 
 func TestReportTag(t *testing.T) {
 	var report *report
-	var tag Tag
+	var img gcloud.Image
 	var expectedTotal int
 	var expectedTotalDeleted int
 	var actualTotal int
 	var actualTotalDeleted int
 
 	report = newReport()
-	tag = Tag{}
-	report.reportTag(tag)
+	img = gcloud.Image{}
+	report.reportImage(img)
 	expectedTotal = 1
 	actualTotal = report.Total()
 	if actualTotal != expectedTotal {
@@ -54,9 +56,9 @@ func TestReportTag(t *testing.T) {
 	}
 
 	report = newReport()
-	tag = Tag{}
-	tag.IsRemoved = true
-	report.reportTag(tag)
+	img = gcloud.Image{}
+	img.IsRemoved = true
+	report.reportImage(img)
 	expectedTotal = 1
 	actualTotal = report.Total()
 	if actualTotal != expectedTotal {
