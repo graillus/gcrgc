@@ -12,33 +12,33 @@ import (
 func ParseArgs() *gcrgc.Settings {
 	settings := gcrgc.Settings{}
 
-	flag.StringVar(&settings.Repository, "repository", "", "Clean all images from a given repository, e.g. \"gcr.io/project-id\". Some images can be excluded with -exclude-image option")
+	flag.StringVar(&settings.Registry, "registry", "", "Google Cloud Registry name, e.g. \"gcr.io/project-id\". Some repositories can be excluded with -exclude-repository option")
 	flag.StringVar(&settings.Date, "date", "", "Delete images older than YYYY-MM-DD")
-	flag.BoolVar(&settings.AllImages, "all", false, "Include all images from the repository. Defaults to false.")
+	flag.BoolVar(&settings.AllRepositories, "all", false, "Include all repositories from the registry. Defaults to false.")
 	flag.BoolVar(&settings.UntaggedOnly, "untagged-only", false, "Only remove untagged images. Defaults to false.")
 	flag.BoolVar(&settings.DryRun, "dry-run", false, "See images to be deleted without actually deleting them. Defaults to false.")
-	flag.Var(&settings.ExcludedImages, "exclude-image", "Image(s) to be excluded, to be used in addition with the -all option. Can be repeated.")
+	flag.Var(&settings.ExcludedRepositories, "exclude-repository", "Repo(s) to be excluded, to be used in addition with the -all option. Can be repeated.")
 	flag.Var(&settings.ExcludedTags, "exclude-tag", "Tag(s) to be excluded. Can be repeated.")
 
 	flag.Parse()
 
 	args := flag.Args()
-	settings.Images = args
+	settings.Repositories = args
 
-	if settings.Repository == "" {
-		fmt.Println("The -repository option is missing")
+	if settings.Registry == "" {
+		fmt.Println("The -registry option is missing")
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
 
-	if settings.AllImages == false && len(settings.Images) == 0 {
-		fmt.Println("You must provide at least one image name, or set the -all option to include all images from the repository")
+	if settings.AllRepositories == false && len(settings.Repositories) == 0 {
+		fmt.Println("You must provide at least one repository name, or set the -all option to include all repositories from the registry")
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
 
-	if settings.AllImages == false && len(settings.ExcludedImages) > 0 {
-		fmt.Println("You cannot exclude images unless using option -all")
+	if settings.AllRepositories == false && len(settings.ExcludedRepositories) > 0 {
+		fmt.Println("You cannot exclude repositories unless using option -all")
 		flag.PrintDefaults()
 		os.Exit(1)
 	}

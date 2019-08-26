@@ -19,9 +19,9 @@ func (r report) TotalDeleted() int {
 	return r.totalDeleted
 }
 
-func (r *report) reportTag(tag gcloud.Tag) {
+func (r *report) reportImage(img gcloud.Image) {
 	r.total++
-	if tag.IsRemoved {
+	if img.IsRemoved {
 		r.totalDeleted++
 	}
 }

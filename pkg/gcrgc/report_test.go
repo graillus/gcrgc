@@ -34,15 +34,15 @@ func TestTotalDeleted(t *testing.T) {
 
 func TestReportTag(t *testing.T) {
 	var report *report
-	var tag gcloud.Tag
+	var img gcloud.Image
 	var expectedTotal int
 	var expectedTotalDeleted int
 	var actualTotal int
 	var actualTotalDeleted int
 
 	report = newReport()
-	tag = gcloud.Tag{}
-	report.reportTag(tag)
+	img = gcloud.Image{}
+	report.reportImage(img)
 	expectedTotal = 1
 	actualTotal = report.Total()
 	if actualTotal != expectedTotal {
@@ -56,9 +56,9 @@ func TestReportTag(t *testing.T) {
 	}
 
 	report = newReport()
-	tag = gcloud.Tag{}
-	tag.IsRemoved = true
-	report.reportTag(tag)
+	img = gcloud.Image{}
+	img.IsRemoved = true
+	report.reportImage(img)
 	expectedTotal = 1
 	actualTotal = report.Total()
 	if actualTotal != expectedTotal {

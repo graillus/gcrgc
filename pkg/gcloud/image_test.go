@@ -2,53 +2,43 @@ package gcloud
 
 import "testing"
 
-func TestNewImage(t *testing.T) {
-	img := NewImage("name")
-
-	expected := "name"
-	actual := img.Name
-	if actual != expected {
-		t.Errorf("Expected Image.Name to be %s, got %s", expected, actual)
-	}
-}
-
-var containsTests = []struct {
-	imgs     []Image
+var containsTagTest = []struct {
+	img      Image
 	test     string
 	expected bool
 }{
-	{
-		[]Image{},
-		"some image",
-		false,
-	},
-	{
-		[]Image{
-			Image{Name: "first"},
-			Image{Name: "second"},
-			Image{Name: "third"},
-		},
-		"some image",
-		false,
-	},
-	{
-		[]Image{
-			Image{Name: "first"},
-			Image{Name: "second"},
-			Image{Name: "third"},
-		},
-		"third",
-		true,
-	},
+	{Image{}, "some tag", false},
+	{Image{Tags: []string{"not matching tag"}}, "some tag", false},
+	{Image{Tags: []string{"not matching tag", "matching tag"}}, "matching tag", true},
 }
 
-func TestContainsImage(t *testing.T) {
+func TestContainsTag(t *testing.T) {
 	var actual bool
 
-	for _, test := range containsTests {
-		actual = ContainsImage(test.test, test.imgs)
+	for _, test := range containsTagTest {
+		actual = test.img.ContainsTag(test.test)
 		if actual != test.expected {
-			t.Errorf("Expected ContainsImage to be %v, got %v instead", test.expected, actual)
+			t.Errorf("Expected ContainsTag to be %v, got %v instead", test.expected, actual)
+		}
+	}
+}
+
+var isTaggedTest = []struct {
+	img      Image
+	expected bool
+}{
+	{Image{}, false},
+	{Image{Tags: []string{}}, false},
+	{Image{Tags: []string{"a tag"}}, true},
+}
+
+func TestIsTagged(t *testing.T) {
+	var actual bool
+
+	for _, test := range isTaggedTest {
+		actual = test.img.IsTagged()
+		if actual != test.expected {
+			t.Errorf("Expected IsTagged to be %v, got %v instead", test.expected, actual)
 		}
 	}
 }

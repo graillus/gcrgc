@@ -2,6 +2,7 @@ language: go
 
 go:
   - "1.11"
+  - "1.12"
   - tip
 
 matrix:
@@ -16,13 +17,12 @@ matrix:
 notifications:
   email: false
 
-
 # Skip the install step. Don't `go get` dependencies. Only build with the
 # code in vendor/
 install: true
 
 script:
-  - go test -race -coverprofile=coverage.txt -covermode=atomic cmd/gcrgc/*
+  - go test -race -coverprofile=coverage.txt -covermode=atomic ./...
   - go vet ./...
 
 # push results to CodeCov

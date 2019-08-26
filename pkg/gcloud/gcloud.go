@@ -19,13 +19,13 @@ func NewGCloud(e cmd.Executor) *GCloud {
 	return &GCloud{e}
 }
 
-// ListImages gets the list of repositories for current registry
-func (g GCloud) ListImages(repository string) []Image {
+// ListRepositories gets the list of repositories for current registry
+func (g GCloud) ListRepositories(registry string) []Repository {
 	args := []string{
 		"container",
 		"images",
 		"list",
-		strings.Join([]string{"--repository", repository}, "="),
+		strings.Join([]string{"--repository", registry}, "="),
 		strings.Join([]string{"--format", "json"}, "="),
 		strings.Join([]string{"--limit", "999999"}, "="),
 	}
@@ -36,19 +36,19 @@ func (g GCloud) ListImages(repository string) []Image {
 		log.Fatalf("Command failed with %s\n", err)
 	}
 
-	var images []Image
-	json.Unmarshal(cmd.Stdout.Bytes(), &images)
+	var repos []Repository
+	json.Unmarshal(cmd.Stdout.Bytes(), &repos)
 
-	return images
+	return repos
 }
 
-// ListTags gets the list of tags for the current image
-func (g GCloud) ListTags(image string, minDate string) []Tag {
+// ListImages gets the list of images for the given repository name
+func (g GCloud) ListImages(repo string, minDate string) []Image {
 	args := []string{
 		"container",
 		"images",
 		"list-tags",
-		image,
+		repo,
 		strings.Join([]string{"--format", "json"}, "="),
 		strings.Join([]string{"--sort-by", "TIMESTAMP"}, "="),
 		strings.Join([]string{"--limit", "999999"}, "="),
@@ -64,16 +64,16 @@ func (g GCloud) ListTags(image string, minDate string) []Tag {
 		log.Fatalf("Command failed with %s\n", err)
 	}
 
-	var tags []Tag
-	json.Unmarshal(cmd.Stdout.Bytes(), &tags)
+	var imgs []Image
+	json.Unmarshal(cmd.Stdout.Bytes(), &imgs)
 
-	return tags
+	return imgs
 }
 
-// Delete deletes the tag
-func (g GCloud) Delete(image string, t *Tag, dryRun bool) {
+// DeleteImage deletes an image
+func (g GCloud) DeleteImage(repo string, i *Image, dryRun bool) {
 	if dryRun {
-		t.IsRemoved = true
+		i.IsRemoved = true
 
 		return
 	}
@@ -82,7 +82,7 @@ func (g GCloud) Delete(image string, t *Tag, dryRun bool) {
 		"container",
 		"images",
 		"delete",
-		strings.Join([]string{image, t.Digest}, "@"),
+		strings.Join([]string{repo, i.Digest}, "@"),
 		"--force-delete-tags",
 		"--quiet",
 	}
@@ -90,10 +90,10 @@ func (g GCloud) Delete(image string, t *Tag, dryRun bool) {
 	cmd := cmd.NewCmd("gcloud", args)
 	err := g.e.Exec(cmd)
 	if err != nil {
-		fmt.Printf("Unable to delete tag %s: %s\n", t.Digest, err)
+		fmt.Printf("Unable to delete image %s: %s\n", i.Digest, err)
 
 		return
 	}
 
-	t.IsRemoved = true
+	i.IsRemoved = true
 }

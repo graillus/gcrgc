@@ -18,11 +18,11 @@ func (c *cliMock) Exec(gcmd *cmd.Cmd) error {
 	return c.ret
 }
 
-func TestListImages(t *testing.T) {
+func TestListRepositories(t *testing.T) {
 	cli := cliMock{nil, nil}
 	gcloud := NewGCloud(&cli)
 
-	gcloud.ListImages("gcr.io/project-id")
+	gcloud.ListRepositories("gcr.io/project-id")
 
 	if cli.cmd.Name != "gcloud" {
 		t.Errorf("Expected command name to be %s, but got %s", "gcloud", cli.cmd.Name)
@@ -35,11 +35,11 @@ func TestListImages(t *testing.T) {
 	}
 }
 
-func TestListTags(t *testing.T) {
+func TestListImages(t *testing.T) {
 	cli := cliMock{nil, nil}
 	gcloud := NewGCloud(&cli)
 
-	gcloud.ListTags("gcr.io/project-id/image", "2019-01-01")
+	gcloud.ListImages("gcr.io/project-id/image", "2019-01-01")
 
 	if cli.cmd.Name != "gcloud" {
 		t.Errorf("Expected command name to be %s, but got %s", "gcloud", cli.cmd.Name)
@@ -52,12 +52,12 @@ func TestListTags(t *testing.T) {
 	}
 }
 
-func TestDelete(t *testing.T) {
+func TestDeleteImage(t *testing.T) {
 	cli := cliMock{nil, nil}
 	gcloud := NewGCloud(&cli)
-	tag := Tag{Digest: "sha256:digest"}
+	img := Image{Digest: "sha256:digest"}
 
-	gcloud.Delete("gcr.io/project-id/image", &tag, false)
+	gcloud.DeleteImage("gcr.io/project-id/image", &img, false)
 
 	if cli.cmd.Name != "gcloud" {
 		t.Errorf("Expected command name to be %s, but got %s", "gcloud", cli.cmd.Name)
@@ -69,23 +69,23 @@ func TestDelete(t *testing.T) {
 		t.Errorf("Expected command to be \"%s\", but got \"%s\"", expectedCommand, actualCommand)
 	}
 
-	if tag.IsRemoved != true {
-		t.Errorf("Expected tag to be marked as deleted")
+	if img.IsRemoved != true {
+		t.Errorf("Expected image to be marked as deleted")
 	}
 }
 
-func TestDeleteDryRun(t *testing.T) {
+func TestDeleteImageDryRun(t *testing.T) {
 	cli := cliMock{nil, nil}
 	gcloud := NewGCloud(&cli)
-	tag := Tag{Digest: "sha256:digest"}
+	img := Image{Digest: "sha256:digest"}
 
-	gcloud.Delete("gcr.io/project-id/image", &tag, true)
+	gcloud.DeleteImage("gcr.io/project-id/image", &img, true)
 
 	if cli.cmd != nil {
 		t.Errorf("Unexpected call to gcloud cli")
 	}
 
-	if tag.IsRemoved != true {
-		t.Errorf("Expected tag to be marked as deleted")
+	if img.IsRemoved != true {
+		t.Errorf("Expected image to be marked as deleted")
 	}
 }
