@@ -4,12 +4,30 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/graillus/gcrgc/pkg/gcrgc"
 )
 
+type stringList []string
+
+func (s *stringList) String() string {
+	return strings.Join(*s, ", ")
+}
+
+func (s *stringList) Set(value string) error {
+	*s = append(*s, value)
+
+	return nil
+}
+
 // ParseArgs parses compmand-line args and returns a Settings instance
 func ParseArgs() *gcrgc.Settings {
+	var (
+		exclRepos stringList
+		exclTags  stringList
+	)
+
 	settings := gcrgc.Settings{}
 
 	flag.StringVar(&settings.Registry, "registry", "", "Google Cloud Registry name, e.g. \"gcr.io/project-id\". Some repositories can be excluded with -exclude-repository option")
@@ -17,10 +35,12 @@ func ParseArgs() *gcrgc.Settings {
 	flag.BoolVar(&settings.AllRepositories, "all", false, "Include all repositories from the registry. Defaults to false.")
 	flag.BoolVar(&settings.UntaggedOnly, "untagged-only", false, "Only remove untagged images. Defaults to false.")
 	flag.BoolVar(&settings.DryRun, "dry-run", false, "See images to be deleted without actually deleting them. Defaults to false.")
-	flag.Var(&settings.ExcludedRepositories, "exclude-repository", "Repo(s) to be excluded, to be used in addition with the -all option. Can be repeated.")
-	flag.Var(&settings.ExcludedTags, "exclude-tag", "Tag(s) to be excluded. Can be repeated.")
+	flag.Var(&exclRepos, "exclude-repository", "Repo(s) to be excluded, to be used in addition with the -all option. Can be repeated.")
+	flag.Var(&exclTags, "exclude-tag", "Tag(s) to be excluded. Can be repeated.")
 
 	flag.Parse()
+	settings.ExcludedRepositories = exclRepos
+	settings.ExcludedTags = exclTags
 
 	args := flag.Args()
 	settings.Repositories = args

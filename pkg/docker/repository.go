@@ -1,12 +1,12 @@
-package gcloud
+package docker
 
 // Repository represents a docker image inside repository
 type Repository struct {
-	Name   string `json:"name"`
-	Images []Image
+	Name   string
+	Images []*Image
 }
 
 // NewRepository returns a new instance of Repository
 func NewRepository(name string) *Repository {
-	return &Repository{name, []Image{}}
+	return &Repository{name, nil}
 }

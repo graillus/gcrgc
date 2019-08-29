@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/graillus/gcrgc/pkg/cmd"
+	"github.com/graillus/gcrgc/pkg/docker"
 )
 
 // GCloud abstracts the gcloud cli
@@ -20,7 +21,7 @@ func NewGCloud(e cmd.Executor) *GCloud {
 }
 
 // ListRepositories gets the list of repositories for current registry
-func (g GCloud) ListRepositories(registry string) []Repository {
+func (g GCloud) ListRepositories(registry string) []docker.Repository {
 	args := []string{
 		"container",
 		"images",
@@ -30,20 +31,24 @@ func (g GCloud) ListRepositories(registry string) []Repository {
 		strings.Join([]string{"--limit", "999999"}, "="),
 	}
 
-	cmd := cmd.NewCmd("gcloud", args)
-	err := g.e.Exec(cmd)
+	cmd, err := g.exec(args)
 	if err != nil {
 		log.Fatalf("Command failed with %s\n", err)
 	}
 
-	var repos []Repository
-	json.Unmarshal(cmd.Stdout.Bytes(), &repos)
+	var reposData []repository
+	json.Unmarshal(cmd.Stdout.Bytes(), &reposData)
+
+	var repos []docker.Repository
+	for _, repoData := range reposData {
+		repos = append(repos, *docker.NewRepository(repoData.Name))
+	}
 
 	return repos
 }
 
 // ListImages gets the list of images for the given repository name
-func (g GCloud) ListImages(repo string, minDate string) []Image {
+func (g GCloud) ListImages(repo string, minDate string) []docker.Image {
 	args := []string{
 		"container",
 		"images",
@@ -58,20 +63,24 @@ func (g GCloud) ListImages(repo string, minDate string) []Image {
 		args = append(args, strings.Join([]string{"--filter", "timestamp.datetime<'" + minDate + "'"}, "="))
 	}
 
-	cmd := cmd.NewCmd("gcloud", args)
-	err := g.e.Exec(cmd)
+	cmd, err := g.exec(args)
 	if err != nil {
 		log.Fatalf("Command failed with %s\n", err)
 	}
 
-	var imgs []Image
-	json.Unmarshal(cmd.Stdout.Bytes(), &imgs)
+	var imgsData []image
+	json.Unmarshal(cmd.Stdout.Bytes(), &imgsData)
+
+	var imgs []docker.Image
+	for _, imgData := range imgsData {
+		imgs = append(imgs, *docker.NewImage(imgData.Digest, imgData.Tags))
+	}
 
 	return imgs
 }
 
 // DeleteImage deletes an image
-func (g GCloud) DeleteImage(repo string, i *Image, dryRun bool) {
+func (g GCloud) DeleteImage(repo string, i *docker.Image, dryRun bool) {
 	if dryRun {
 		i.IsRemoved = true
 
@@ -87,8 +96,7 @@ func (g GCloud) DeleteImage(repo string, i *Image, dryRun bool) {
 		"--quiet",
 	}
 
-	cmd := cmd.NewCmd("gcloud", args)
-	err := g.e.Exec(cmd)
+	_, err := g.exec(args)
 	if err != nil {
 		fmt.Printf("Unable to delete image %s: %s\n", i.Digest, err)
 
@@ -96,4 +104,28 @@ func (g GCloud) DeleteImage(repo string, i *Image, dryRun bool) {
 	}
 
 	i.IsRemoved = true
+}
+
+func (g GCloud) exec(args []string) (*cmd.Cmd, error) {
+	cmd := cmd.NewCmd("gcloud", args)
+	err := g.e.Exec(cmd)
+
+	return cmd, err
+}
+
+// Repository represents a docker image inside repository
+type repository struct {
+	Name string `json:"name"`
+}
+
+// Image represents a repository image
+type image struct {
+	Digest    string    `json:"digest"`
+	Tags      []string  `json:"tags"`
+	Timestamp timestamp `json:"timestamp"`
+}
+
+// Timestamp holds the image's date and time information
+type timestamp struct {
+	Datetime string `json:"datetime"`
 }
