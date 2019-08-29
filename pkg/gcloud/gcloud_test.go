@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/graillus/gcrgc/pkg/cmd"
+	"github.com/graillus/gcrgc/pkg/docker"
 )
 
 type cliMock struct {
@@ -55,7 +56,7 @@ func TestListImages(t *testing.T) {
 func TestDeleteImage(t *testing.T) {
 	cli := cliMock{nil, nil}
 	gcloud := NewGCloud(&cli)
-	img := Image{Digest: "sha256:digest"}
+	img := docker.Image{Digest: "sha256:digest"}
 
 	gcloud.DeleteImage("gcr.io/project-id/image", &img, false)
 
@@ -77,7 +78,7 @@ func TestDeleteImage(t *testing.T) {
 func TestDeleteImageDryRun(t *testing.T) {
 	cli := cliMock{nil, nil}
 	gcloud := NewGCloud(&cli)
-	img := Image{Digest: "sha256:digest"}
+	img := docker.Image{Digest: "sha256:digest"}
 
 	gcloud.DeleteImage("gcr.io/project-id/image", &img, true)
 

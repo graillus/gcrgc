@@ -1,9 +1,9 @@
-package gcloud
+package docker
 
 import "testing"
 
 func TestNewRegistry(t *testing.T) {
-	reg := NewRegistry("name")
+	reg := NewRegistry("name", []Repository{})
 
 	expected := "name"
 	actual := reg.Name

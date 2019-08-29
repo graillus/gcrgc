@@ -1,8 +1,8 @@
-package gcloud
+package docker
 
 import "testing"
 
-var containsTagTest = []struct {
+var hasTagTest = []struct {
 	img      Image
 	test     string
 	expected bool
@@ -12,13 +12,13 @@ var containsTagTest = []struct {
 	{Image{Tags: []string{"not matching tag", "matching tag"}}, "matching tag", true},
 }
 
-func TestContainsTag(t *testing.T) {
+func TestHasTag(t *testing.T) {
 	var actual bool
 
-	for _, test := range containsTagTest {
-		actual = test.img.ContainsTag(test.test)
+	for _, test := range hasTagTest {
+		actual = test.img.HasTag(test.test)
 		if actual != test.expected {
-			t.Errorf("Expected ContainsTag to be %v, got %v instead", test.expected, actual)
+			t.Errorf("Expected HasTag to be %v, got %v instead", test.expected, actual)
 		}
 	}
 }

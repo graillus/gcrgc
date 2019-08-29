@@ -3,7 +3,7 @@ package gcrgc
 import (
 	"testing"
 
-	"github.com/graillus/gcrgc/pkg/gcloud"
+	"github.com/graillus/gcrgc/pkg/docker"
 )
 
 func TestTotal(t *testing.T) {
@@ -34,14 +34,14 @@ func TestTotalDeleted(t *testing.T) {
 
 func TestReportTag(t *testing.T) {
 	var report *report
-	var img gcloud.Image
+	var img docker.Image
 	var expectedTotal int
 	var expectedTotalDeleted int
 	var actualTotal int
 	var actualTotalDeleted int
 
 	report = newReport()
-	img = gcloud.Image{}
+	img = docker.Image{}
 	report.reportImage(img)
 	expectedTotal = 1
 	actualTotal = report.Total()
@@ -56,7 +56,7 @@ func TestReportTag(t *testing.T) {
 	}
 
 	report = newReport()
-	img = gcloud.Image{}
+	img = docker.Image{}
 	img.IsRemoved = true
 	report.reportImage(img)
 	expectedTotal = 1

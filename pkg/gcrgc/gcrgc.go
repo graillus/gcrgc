@@ -2,35 +2,23 @@ package gcrgc
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/graillus/gcrgc/pkg/cmd"
+	"github.com/graillus/gcrgc/pkg/docker"
 	"github.com/graillus/gcrgc/pkg/gcloud"
 )
 
 // Settings contains app Configuration
 type Settings struct {
 	Registry             string
-	Repositories         stringList
+	Repositories         []string
 	Date                 string
 	UntaggedOnly         bool
 	DryRun               bool
 	AllRepositories      bool
-	ExcludedRepositories stringList
-	ExcludedTags         stringList
-}
-
-type stringList []string
-
-func (s *stringList) String() string {
-	return strings.Join(*s, ", ")
-}
-
-func (s *stringList) Set(value string) error {
-	*s = append(*s, value)
-
-	return nil
+	ExcludedRepositories []string
+	ExcludedTags         []string
 }
 
 // App is the main application
@@ -48,18 +36,30 @@ func (app *App) Start() {
 	cli := cmd.NewCli()
 	gcloudCmd := gcloud.NewGCloud(cli)
 
-	registry := gcloud.NewRegistry(app.settings.Registry)
-
-	fmt.Printf("Fetching repositories in registry [%s]\n", registry.Name)
-	repos := gcloudCmd.ListRepositories(registry.Name)
+	fmt.Printf("Fetching repositories in registry [%s]\n", app.settings.Registry)
+	repos := gcloudCmd.ListRepositories(app.settings.Registry)
+	registry := docker.NewRegistry(app.settings.Registry, repos)
 	fmt.Printf("%d repositories found\n", len(repos))
 
-	registry.Repositories = repos
+	filteredRepos := getRepoList(registry, app.settings)
+	tasks := getTaskList(gcloudCmd, filteredRepos, app.settings)
+
+	if len(tasks) == 0 {
+		fmt.Println("Nothing to do.")
+
+		return
+	}
 
 	r := newReport()
-	tasks := getTaskList(gcloudCmd, *registry, app.settings)
 	for k, v := range tasks {
+		if len(v) == 0 {
+			fmt.Printf("No images to clean in repository [%s]\n", k)
+
+			continue
+		}
+
 		fmt.Printf("Cleaning repository [%s] (%d matches)\n", k, len(v))
+
 		for _, i := range v {
 			fmt.Printf("Deleting %s %s\n", i.Digest, strings.Join(i.Tags, ", "))
 			gcloudCmd.DeleteImage(k, &i, app.settings.DryRun)
@@ -71,81 +71,19 @@ func (app *App) Start() {
 	fmt.Printf("Deleted images: %d/%d\n", r.TotalDeleted(), r.Total())
 }
 
-type images []gcloud.Image
-type taskList map[string]images
+type taskList map[string][]docker.Image
 
-func getTaskList(gcloudCmd *gcloud.GCloud, registry gcloud.Registry, s *Settings) taskList {
-	var included []gcloud.Repository
-	var notFound []string
-	if s.AllRepositories == true {
-		included, notFound = excludeRepos(registry, s)
-	} else {
-		included, notFound = includeRepos(registry, s)
-	}
-
-	if len(notFound) > 0 {
-		os.Exit(1)
-	}
-
+func getTaskList(gcloudCmd docker.Provider, repos []docker.Repository, s *Settings) taskList {
 	tasks := make(taskList)
-	for _, repo := range included {
-		var filteredImgs images
+
+	for _, repo := range repos {
 		imgs := gcloudCmd.ListImages(repo.Name, s.Date)
-		for _, img := range imgs {
-			if s.UntaggedOnly && img.IsTagged() {
-				continue
-			}
-			exclude := false
-			if len(s.ExcludedTags) > 0 {
-				for _, excl := range s.ExcludedTags {
-					if img.ContainsTag(excl) {
-						exclude = true
-					}
-				}
-			}
-			if !exclude {
-				filteredImgs = append(filteredImgs, img)
-			}
-		}
+
+		filteredImgs := getImageList(imgs, s.UntaggedOnly, s.ExcludedTags)
+
 		tasks[repo.Name] = filteredImgs
 		fmt.Printf("%d matches for repository [%s]\n", len(filteredImgs), repo.Name)
 	}
 
 	return tasks
-}
-
-func excludeRepos(registry gcloud.Registry, settings *Settings) ([]gcloud.Repository, []string) {
-	var notFound []string
-	included := registry.Repositories
-	for _, img := range settings.ExcludedRepositories {
-		repoName := settings.Registry + "/" + img
-		if !registry.ContainsRepository(repoName) {
-			notFound = append(notFound, repoName)
-			fmt.Printf("Cannot exclude repository [%s]: it does not exist in this registry\n", repoName)
-		} else {
-			for i := 0; i < len(included); i++ {
-				if included[i].Name == repoName {
-					included = append(included[:i], included[i+1:]...)
-				}
-			}
-		}
-	}
-
-	return included, notFound
-}
-
-func includeRepos(registry gcloud.Registry, settings *Settings) ([]gcloud.Repository, []string) {
-	var notFound []string
-	var included []gcloud.Repository
-	for _, img := range settings.Repositories {
-		repoName := settings.Registry + "/" + img
-		if !registry.ContainsRepository(repoName) {
-			notFound = append(notFound, repoName)
-			fmt.Printf("Cannot include repository [%s]: it does not exist in this registry\n", repoName)
-		} else {
-			included = append(included, *gcloud.NewRepository(repoName))
-		}
-	}
-
-	return included, notFound
 }

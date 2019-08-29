@@ -1,4 +1,4 @@
-package gcloud
+package docker
 
 // Registry represents a docker registry
 type Registry struct {
@@ -7,8 +7,8 @@ type Registry struct {
 }
 
 // NewRegistry returns a new instance of Registry
-func NewRegistry(name string) *Registry {
-	return &Registry{name, []Repository{}}
+func NewRegistry(name string, repos []Repository) *Registry {
+	return &Registry{name, repos}
 }
 
 // ContainsRepository checks if a repository is present in the Registry
