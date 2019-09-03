@@ -17,6 +17,7 @@ Initially based on the [gist](https://gist.github.com/ahmetb/7ce6d741bd5baa194a3
 - Clean up multiple image repositories at once with option `-all`
 - Exclude some image repositories with option `-exclude-repository`
 - Exclude images with certain tag(s) from deletion with option `-exclude-tag`
+- Exclude images with tags matching a regexp pattern with option `-exclude-tag-pattern`
 - Exclude images with tags matching a [SemVer](https://semver.org) pattern with option `-exclude-semver-tags`
   > Note: The SemVer standard does not include the `v` or `V` prefix (e.g. v1.0.0), but as it is widely used, our Regexp will also match tags beginning with either `v` or `V`, so they will be excluded from deletion as well.
 - Only remove untagged images with `-untagged-only` flag

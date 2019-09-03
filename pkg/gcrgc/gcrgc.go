@@ -20,6 +20,7 @@ type Settings struct {
 	AllRepositories      bool
 	ExcludedRepositories []string
 	ExcludedTags         []string
+	ExcludedTagPatterns  []string
 	ExcludeSemVerTags    bool
 }
 
@@ -78,6 +79,11 @@ type taskList map[string][]docker.Image
 func getTaskList(gcloudCmd docker.Provider, repos []docker.Repository, s *Settings) taskList {
 	const semverPattern = `^[vV]?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`
 	var exclTagRegexps []*regexp.Regexp
+
+	for _, p := range s.ExcludedTagPatterns {
+		regexp := regexp.MustCompile(p)
+		exclTagRegexps = append(exclTagRegexps, regexp)
+	}
 
 	if s.ExcludeSemVerTags == true {
 		regexp := regexp.MustCompile(semverPattern)
