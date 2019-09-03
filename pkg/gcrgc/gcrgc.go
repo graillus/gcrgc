@@ -2,6 +2,7 @@ package gcrgc
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/graillus/gcrgc/pkg/cmd"
@@ -19,6 +20,7 @@ type Settings struct {
 	AllRepositories      bool
 	ExcludedRepositories []string
 	ExcludedTags         []string
+	ExcludeSemVerTags    bool
 }
 
 // App is the main application
@@ -74,12 +76,20 @@ func (app *App) Start() {
 type taskList map[string][]docker.Image
 
 func getTaskList(gcloudCmd docker.Provider, repos []docker.Repository, s *Settings) taskList {
+	const semverPattern = `^[vV]?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`
+	var exclTagRegexps []*regexp.Regexp
+
+	if s.ExcludeSemVerTags == true {
+		regexp := regexp.MustCompile(semverPattern)
+		exclTagRegexps = append(exclTagRegexps, regexp)
+	}
+
 	tasks := make(taskList)
 
 	for _, repo := range repos {
 		imgs := gcloudCmd.ListImages(repo.Name, s.Date)
 
-		filteredImgs := getImageList(imgs, s.UntaggedOnly, s.ExcludedTags)
+		filteredImgs := getImageList(imgs, s.UntaggedOnly, s.ExcludedTags, exclTagRegexps)
 
 		tasks[repo.Name] = filteredImgs
 		fmt.Printf("%d matches for repository [%s]\n", len(filteredImgs), repo.Name)

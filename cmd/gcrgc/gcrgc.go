@@ -37,6 +37,7 @@ func ParseArgs() *gcrgc.Settings {
 	flag.BoolVar(&settings.DryRun, "dry-run", false, "See images to be deleted without actually deleting them. Defaults to false.")
 	flag.Var(&exclRepos, "exclude-repository", "Repo(s) to be excluded, to be used in addition with the -all option. Can be repeated.")
 	flag.Var(&exclTags, "exclude-tag", "Tag(s) to be excluded. Can be repeated.")
+	flag.BoolVar(&settings.ExcludeSemVerTags, "exclude-semver-tags", false, "Only remove images not tagged with a SemVer tag. Defaults to false.")
 
 	flag.Parse()
 	settings.ExcludedRepositories = exclRepos
@@ -65,6 +66,12 @@ func ParseArgs() *gcrgc.Settings {
 
 	if settings.UntaggedOnly == true && len(settings.ExcludedTags) > 0 {
 		fmt.Println("You cannot exclude tags when option -untagged-only is true")
+		flag.PrintDefaults()
+		os.Exit(1)
+	}
+
+	if settings.UntaggedOnly == true && settings.ExcludeSemVerTags == true {
+		fmt.Println("You cannot exclude semver tags when option -untagged-only is true")
 		flag.PrintDefaults()
 		os.Exit(1)
 	}

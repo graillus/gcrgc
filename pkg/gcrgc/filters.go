@@ -2,6 +2,7 @@ package gcrgc
 
 import (
 	"fmt"
+	"regexp"
 
 	"github.com/graillus/gcrgc/pkg/docker"
 )
@@ -70,7 +71,7 @@ func includeRepos(registry *docker.Registry, toInclude []string) []docker.Reposi
 	return included
 }
 
-func getImageList(imgs []docker.Image, untaggedOnly bool, exludedTags []string) []docker.Image {
+func getImageList(imgs []docker.Image, untaggedOnly bool, exludedTags []string, exclTagRegexps []*regexp.Regexp) []docker.Image {
 	var filteredImgs []docker.Image
 	for _, img := range imgs {
 		if untaggedOnly && img.IsTagged() {
@@ -78,13 +79,18 @@ func getImageList(imgs []docker.Image, untaggedOnly bool, exludedTags []string) 
 		}
 
 		exclude := false
-		if len(exludedTags) > 0 {
-			for _, excl := range exludedTags {
-				if img.HasTag(excl) {
-					exclude = true
-				}
+		for _, excl := range exludedTags {
+			if img.HasTag(excl) {
+				exclude = true
 			}
 		}
+
+		for _, excl := range exclTagRegexps {
+			if img.HasTagRegexp(excl) {
+				exclude = true
+			}
+		}
+
 		if !exclude {
 			filteredImgs = append(filteredImgs, img)
 		}

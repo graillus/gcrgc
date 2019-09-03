@@ -1,6 +1,9 @@
 package docker
 
-import "testing"
+import (
+	"regexp"
+	"testing"
+)
 
 var hasTagTest = []struct {
 	img      Image
@@ -19,6 +22,27 @@ func TestHasTag(t *testing.T) {
 		actual = test.img.HasTag(test.test)
 		if actual != test.expected {
 			t.Errorf("Expected HasTag to be %v, got %v instead", test.expected, actual)
+		}
+	}
+}
+
+var hasTagRegexpTest = []struct {
+	img      Image
+	pattern  string
+	expected bool
+}{
+	{Image{}, "^pattern$", false},
+	{Image{Tags: []string{"pattern"}}, "^pattern$", true},
+	{Image{Tags: []string{"not matching pattern"}}, "^pattern$", false},
+}
+
+func TestHasTagRegexp(t *testing.T) {
+	var actual bool
+
+	for _, test := range hasTagRegexpTest {
+		actual = test.img.HasTagRegexp(regexp.MustCompile(test.pattern))
+		if actual != test.expected {
+			t.Errorf("Expected HasTagRegexp to be %v, got %v instead", test.expected, actual)
 		}
 	}
 }
