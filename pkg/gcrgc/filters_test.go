@@ -3,6 +3,7 @@ package gcrgc
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/graillus/gcrgc/pkg/docker"
@@ -134,7 +135,7 @@ func TestGetImageList(t *testing.T) {
 	t.Run("No filter", func(t *testing.T) {
 		expectedDigests := []string{"untagged", "foo", "foo-bar-baz"}
 
-		actual := getImageList(createFakeImages(), false, []string{})
+		actual := getImageList(createFakeImages(), false, []string{}, []*regexp.Regexp{})
 
 		err := assertImages(expectedDigests, actual)
 		if err != nil {
@@ -145,7 +146,7 @@ func TestGetImageList(t *testing.T) {
 	t.Run("Untagged Only", func(t *testing.T) {
 		expectedDigests := []string{"untagged"}
 
-		actual := getImageList(createFakeImages(), true, []string{})
+		actual := getImageList(createFakeImages(), true, []string{}, []*regexp.Regexp{})
 
 		err := assertImages(expectedDigests, actual)
 		if err != nil {
@@ -156,7 +157,20 @@ func TestGetImageList(t *testing.T) {
 	t.Run("Exclude tag", func(t *testing.T) {
 		expectedDigests := []string{"untagged", "foo"}
 
-		actual := getImageList(createFakeImages(), false, []string{"bar"})
+		actual := getImageList(createFakeImages(), false, []string{"bar"}, []*regexp.Regexp{})
+
+		err := assertImages(expectedDigests, actual)
+		if err != nil {
+			t.Error(err)
+		}
+	})
+
+	t.Run("Exclude tag pattern", func(t *testing.T) {
+		expectedDigests := []string{"untagged"}
+
+		re := regexp.MustCompile("^foo")
+
+		actual := getImageList(createFakeImages(), false, []string{}, []*regexp.Regexp{re})
 
 		err := assertImages(expectedDigests, actual)
 		if err != nil {

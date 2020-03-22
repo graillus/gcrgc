@@ -17,6 +17,9 @@ Initially based on the [gist](https://gist.github.com/ahmetb/7ce6d741bd5baa194a3
 - Clean up multiple image repositories at once with option `-all`
 - Exclude some image repositories with option `-exclude-repository`
 - Exclude images with certain tag(s) from deletion with option `-exclude-tag`
+- Exclude images with tags matching a regexp pattern with option `-exclude-tag-pattern`
+- Exclude images with tags matching a [SemVer](https://semver.org) pattern with option `-exclude-semver-tags`
+  > Note: The SemVer standard does not include the `v` or `V` prefix (e.g. v1.0.0), but as it is widely used, our Regexp will also match tags beginning with either `v` or `V`, so they will be excluded from deletion as well.
 - Only remove untagged images with `-untagged-only` flag
 - Dry-run mode with option `-dry-run` (don't actually delete images but get same output)
 
@@ -50,6 +53,11 @@ gcrgc -registry=gcr.io/project-id -untagged-only my-image
 Clean up tagged and untagged images under the `gcr.io/project-id/my-image` repository older than 2019-01-01, excluding tags `master` and `latest`
 ```
 gcrgc -registry=gcr.io/project-id -date=2019-01-01 -exclude-tag=latest -exclude-tag=master my-image
+```
+
+Clean up tagged and untagged images under the `gcr.io/project-id/my-image` excluding SemVer tags and `latest`
+```
+gcrgc -registry=gcr.io/project-id -exclude-tag=latest -exclude-semver-tags my-image
 ```
 
 Clean up tagged and untagged images under the entire registry `gcr.io/project-id` older than 2019-01-01, excluding the images under `gcr.io/project-id/my-image`

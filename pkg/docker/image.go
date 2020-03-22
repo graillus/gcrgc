@@ -1,5 +1,7 @@
 package docker
 
+import "regexp"
+
 // Image represents a repository image
 type Image struct {
 	Digest    string
@@ -16,6 +18,17 @@ func NewImage(digest string, tags []string) *Image {
 func (i Image) HasTag(tag string) bool {
 	for _, t := range i.Tags {
 		if t == tag {
+			return true
+		}
+	}
+
+	return false
+}
+
+// HasTagRegexp checks if the image is tagged with a given Regexp
+func (i Image) HasTagRegexp(re *regexp.Regexp) bool {
+	for _, t := range i.Tags {
+		if re.MatchString(t) {
 			return true
 		}
 	}
