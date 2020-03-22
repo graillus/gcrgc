@@ -14,6 +14,7 @@ Initially based on the [gist](https://gist.github.com/ahmetb/7ce6d741bd5baa194a3
 ## Features
 
 - Remove images older than the date specified with option `-date`
+- Keep images within a given retention period `-retention-period`
 - Clean up multiple image repositories at once with option `-all`
 - Exclude some image repositories with option `-exclude-repository`
 - Exclude images with certain tag(s) from deletion with option `-exclude-tag`
@@ -53,6 +54,11 @@ gcrgc -registry=gcr.io/project-id -untagged-only my-image
 Clean up tagged and untagged images under the `gcr.io/project-id/my-image` repository older than 2019-01-01, excluding tags `master` and `latest`
 ```
 gcrgc -registry=gcr.io/project-id -date=2019-01-01 -exclude-tag=latest -exclude-tag=master my-image
+```
+
+Clean up images older than 30 days
+```
+gcrgc -registry=gcr.io/project-id -retention-period 30d
 ```
 
 Clean up tagged and untagged images under the `gcr.io/project-id/my-image` excluding SemVer tags and `latest`
