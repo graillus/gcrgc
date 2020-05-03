@@ -7,6 +7,6 @@ COPY . .
 
 RUN make build
 
-FROM google/cloud-sdk:alpine
+FROM alpine
 
 COPY --from=build /go/src/github.com/graillus/gcrgc/bin/gcrgc /usr/local/bin/gcrgc

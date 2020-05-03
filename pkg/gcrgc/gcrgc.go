@@ -2,19 +2,22 @@ package gcrgc
 
 import (
 	"fmt"
+	"log"
+	"os"
 	"regexp"
 	"strings"
+	"time"
 
-	"github.com/graillus/gcrgc/pkg/cmd"
+	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/v1/google"
 	"github.com/graillus/gcrgc/pkg/docker"
-	"github.com/graillus/gcrgc/pkg/gcloud"
 )
 
 // Settings contains app Configuration
 type Settings struct {
 	Registry             string
 	Repositories         []string
-	Date                 string
+	Date                 *time.Time
 	UntaggedOnly         bool
 	DryRun               bool
 	AllRepositories      bool
@@ -36,16 +39,16 @@ func NewApp(s *Settings) *App {
 
 // Start the application
 func (app *App) Start() {
-	cli := cmd.NewCli()
-	gcloudCmd := gcloud.NewGCloud(cli)
+	auth := createAuthenticator()
+	gcr := NewGCR(auth)
 
 	fmt.Printf("Fetching repositories in registry [%s]\n", app.settings.Registry)
-	repos := gcloudCmd.ListRepositories(app.settings.Registry)
+	repos := gcr.ListRepositories(app.settings.Registry)
 	registry := docker.NewRegistry(app.settings.Registry, repos)
 	fmt.Printf("%d repositories found\n", len(repos))
 
 	filteredRepos := getRepoList(registry, app.settings)
-	tasks := getTaskList(gcloudCmd, filteredRepos, app.settings)
+	tasks := getTaskList(gcr, filteredRepos, app.settings)
 
 	if len(tasks) == 0 {
 		fmt.Println("Nothing to do.")
@@ -65,7 +68,7 @@ func (app *App) Start() {
 
 		for _, i := range v {
 			fmt.Printf("Deleting %s %s\n", i.Digest, strings.Join(i.Tags, ", "))
-			gcloudCmd.DeleteImage(k, &i, app.settings.DryRun)
+			gcr.DeleteImage(k, &i, app.settings.DryRun)
 			r.reportImage(i)
 		}
 	}
@@ -74,9 +77,28 @@ func (app *App) Start() {
 	fmt.Printf("Deleted images: %d/%d\n", r.TotalDeleted(), r.Total())
 }
 
+func createAuthenticator() authn.Authenticator {
+	var auth authn.Authenticator
+	var err error
+	if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") != "" {
+		auth, err = google.NewEnvAuthenticator()
+		if err != nil {
+			log.Fatalf("Cannot create authenticator: %s\n", err)
+		}
+
+		return auth
+	}
+	auth, err = google.NewGcloudAuthenticator()
+	if err != nil {
+		log.Fatalf("Cannot create authenticator: %s\n", err)
+	}
+
+	return auth
+}
+
 type taskList map[string][]docker.Image
 
-func getTaskList(gcloudCmd docker.Provider, repos []docker.Repository, s *Settings) taskList {
+func getTaskList(gcr docker.Provider, repos []docker.Repository, s *Settings) taskList {
 	const semverPattern = `^[vV]?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`
 	var exclTagRegexps []*regexp.Regexp
 
@@ -93,7 +115,7 @@ func getTaskList(gcloudCmd docker.Provider, repos []docker.Repository, s *Settin
 	tasks := make(taskList)
 
 	for _, repo := range repos {
-		imgs := gcloudCmd.ListImages(repo.Name, s.Date)
+		imgs := gcr.ListImages(repo.Name, *s.Date)
 
 		filteredImgs := getImageList(imgs, s.UntaggedOnly, s.ExcludedTags, exclTagRegexps)
 
