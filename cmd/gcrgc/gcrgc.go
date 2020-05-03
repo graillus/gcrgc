@@ -29,13 +29,14 @@ func ParseArgs() *gcrgc.Settings {
 		exclRepos       stringList
 		exclTags        stringList
 		exclTagPatterns stringList
+		limitDate       string
 		retentionPeriod string
 	)
 
 	settings := gcrgc.Settings{}
 
 	flag.StringVar(&settings.Registry, "registry", "", "Google Cloud Registry name, e.g. \"gcr.io/project-id\". Some repositories can be excluded with -exclude-repository option")
-	flag.StringVar(&settings.Date, "date", "", "Delete images older than YYYY-MM-DD")
+	flag.StringVar(&limitDate, "date", "", "Delete images older than YYYY-MM-DD")
 	flag.StringVar(&retentionPeriod, "retention-period", "", "Retention period in weeks, days, hours, etc.... Older items will be deleted. e.g: `30 days`, `1w`, `24h`")
 	flag.BoolVar(&settings.AllRepositories, "all", false, "Include all repositories from the registry. Defaults to false.")
 	flag.BoolVar(&settings.UntaggedOnly, "untagged-only", false, "Only remove untagged images. Defaults to false.")
@@ -53,7 +54,17 @@ func ParseArgs() *gcrgc.Settings {
 	args := flag.Args()
 	settings.Repositories = args
 
-	if retentionPeriod != "" && settings.Date != "" {
+	if limitDate != "" {
+		date, err := time.Parse("2006-01-02", limitDate)
+		if err != nil {
+			fmt.Println("Unable to parse the -date flag: invalid date format")
+			flag.PrintDefaults()
+		}
+
+		settings.Date = &date
+	}
+
+	if retentionPeriod != "" && settings.Date != nil {
 		fmt.Println("Flags -date and -retention-period are not compatible. Ony one of them can be provided")
 		flag.PrintDefaults()
 		os.Exit(1)
@@ -67,7 +78,7 @@ func ParseArgs() *gcrgc.Settings {
 			os.Exit(1)
 		}
 		date := time.Now().Add(-parsedDuration)
-		settings.Date = date.Format("2006-01-02")
+		settings.Date = &date
 	}
 
 	if settings.Registry == "" {

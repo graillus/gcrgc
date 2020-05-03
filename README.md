@@ -25,7 +25,10 @@ Initially based on the [gist](https://gist.github.com/ahmetb/7ce6d741bd5baa194a3
 - Dry-run mode with option `-dry-run` (don't actually delete images but get same output)
 
 ## Prerequisites
-authenticated `gcloud` session for the project.
+
+You need an authenticated local `gcloud` installation, and write access to a Google Container Registry.
+
+You can use a service account as well by setting the `GOOGLE_APPLICATION_CREDENTIALS` environment variable. Read the Google [documentation](https://cloud.google.com/docs/authentication/getting-started) for more details.
 
 ## Installation
 
@@ -36,13 +39,19 @@ make build
 ...
 ```
 
-## Docker image
+## Using docker
 
 ```
 docker pull graillus/gcrgc
 ```
 
-The docker image extends the google/cloud-sdk image, read the [documentation](https://hub.docker.com/r/google/cloud-sdk/) to learn how to authenticate using the docker image
+Run with Google service account credentials:
+```
+docker run -t --rm \
+  -v /path/to/serviceaccount.json:/credentials \
+  -e GOOGLE_APPLICATION_CREDENTIALS=/credentials/serviceaccount.json
+  graillus/gcrgc ...
+```
 
 ## Usage
 
