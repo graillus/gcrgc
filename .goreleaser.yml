@@ -1,0 +1,11 @@
+env:
+  - GO111MODULE=on
+builds:
+  - main: cmd/gcrgc/gcrgc.go
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - "386"
+      - amd64
