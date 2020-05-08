@@ -1,11 +1,9 @@
 FROM golang:alpine as build
 
-RUN apk add make
-
 WORKDIR /go/src/github.com/graillus/gcrgc
 COPY . .
 
-RUN make build
+RUN go build -o bin/gcrgc cmd/gcrgc/gcrgc.go
 
 FROM alpine
 

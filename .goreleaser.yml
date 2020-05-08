@@ -9,3 +9,9 @@ builds:
     goarch:
       - "386"
       - amd64
+release:
+  prerelease: auto
+changelog:
+  filters:
+    exclude:
+      - '^Merge pull request'

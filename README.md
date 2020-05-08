@@ -32,21 +32,21 @@ You can use a service account as well by setting the `GOOGLE_APPLICATION_CREDENT
 
 ## Installation
 
-```
+```bash
 go get github.com/graillus/gcrgc
 cd $GOPATH/src/github.com/graillus/gcrgc
-make build
+go build -o bin/gcrgc cmd/gcrgc/gcrgc.go
 ...
 ```
 
 ## Using docker
 
-```
+```bash
 docker pull graillus/gcrgc
 ```
 
 Run with Google service account credentials:
-```
+```bash
 docker run -t --rm \
   -v /path/to/serviceaccount.json:/credentials \
   -e GOOGLE_APPLICATION_CREDENTIALS=/credentials/serviceaccount.json
@@ -56,26 +56,26 @@ docker run -t --rm \
 ## Usage
 
 Clean up untagged images under the `gcr.io/project-id/my-image` repository.
-```
+```bash
 gcrgc -registry=gcr.io/project-id -untagged-only my-image
 ```
 
 Clean up tagged and untagged images under the `gcr.io/project-id/my-image` repository older than 2019-01-01, excluding tags `master` and `latest`
-```
+```bash
 gcrgc -registry=gcr.io/project-id -date=2019-01-01 -exclude-tag=latest -exclude-tag=master my-image
 ```
 
 Clean up images older than 30 days
-```
+```bash
 gcrgc -registry=gcr.io/project-id -retention-period 30d
 ```
 
 Clean up tagged and untagged images under the `gcr.io/project-id/my-image` excluding SemVer tags and `latest`
-```
+```bash
 gcrgc -registry=gcr.io/project-id -exclude-tag=latest -exclude-semver-tags my-image
 ```
 
 Clean up tagged and untagged images under the entire registry `gcr.io/project-id` older than 2019-01-01, excluding the images under `gcr.io/project-id/my-image`
-```
+```bash
 gcrgc -registry=gcr.io/project-id -all -date=2019-01-01 -exclude-repository=my-image
 ```
