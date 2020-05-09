@@ -7,8 +7,9 @@ gcrgc
 [![GoDoc](https://godoc.org/github.com/graillus/gcrgc?status.svg)](https://godoc.org/github.com/graillus/gcrgc)
 [![License MIT](https://img.shields.io/github/license/graillus/gcrgc.svg)](https://github.com/graillus/gcrgc/blob/master/LICENSE)
 
-Clean up images on the Google Container Registry.
+The GCR Garbage Collector
 
+Tool for cleaning up images on the Google Container Registry.
 Initially based on the [gist](https://gist.github.com/ahmetb/7ce6d741bd5baa194a3fac6b1fec8bb7) by [Ahmet Alp Balkan](https://gist.github.com/ahmetb), and rewritten in Go.
 
 ## Features
@@ -32,14 +33,29 @@ You can use a service account as well by setting the `GOOGLE_APPLICATION_CREDENT
 
 ## Installation
 
+### Binary releases
+
+1. Download your [desired version](https://github.com/graillus/gcrgc/releases)
+2. Extract it
+```bash
+tar xvf gcrgc_0.3.2_linux_amd64.tar.gz
+```
+3. Move binary to desired destination
+```bash
+mv gcrgc /usr/local/bin
+```
+
+### From sources
+
 ```bash
 go get github.com/graillus/gcrgc
 cd $GOPATH/src/github.com/graillus/gcrgc
 go build -o bin/gcrgc cmd/gcrgc/gcrgc.go
-...
 ```
 
-## Using docker
+### Using docker
+
+A public image repository is available on [DockerHub](https://hub.docker.com/r/graillus/gcrgc)
 
 ```bash
 docker pull graillus/gcrgc
@@ -79,3 +95,9 @@ Clean up tagged and untagged images under the entire registry `gcr.io/project-id
 ```bash
 gcrgc -registry=gcr.io/project-id -all -date=2019-01-01 -exclude-repository=my-image
 ```
+
+## Helm chart
+
+A Helm chart is available if you wish to run it on a Kubernetes cluster (as a `CronJob`).
+
+Check the [documentation](https://github.com/graillus/helm-charts/tree/master/charts/gcrgc)
