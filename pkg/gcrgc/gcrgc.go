@@ -114,8 +114,15 @@ func getTaskList(gcr docker.Provider, repos []docker.Repository, s *Settings) ta
 
 	tasks := make(taskList)
 
+	// By default all images pushed before the current time will be taken into account
+	var date = time.Now()
+	if s.Date != nil {
+		// If date setting is set we use its value instead
+		date = *s.Date
+	}
+
 	for _, repo := range repos {
-		imgs := gcr.ListImages(repo.Name, *s.Date)
+		imgs := gcr.ListImages(repo.Name, date)
 
 		filteredImgs := getImageList(imgs, s.UntaggedOnly, s.ExcludedTags, exclTagRegexps)
 
