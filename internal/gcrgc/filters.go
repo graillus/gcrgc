@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/graillus/gcrgc/pkg/docker"
+	"github.com/graillus/gcrgc/internal/docker"
 )
 
 func getRepoList(registry *docker.Registry, s *Settings) []docker.Repository {

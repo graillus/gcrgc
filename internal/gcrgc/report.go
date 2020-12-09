@@ -1,6 +1,6 @@
 package gcrgc
 
-import "github.com/graillus/gcrgc/pkg/docker"
+import "github.com/graillus/gcrgc/internal/docker"
 
 type report struct {
 	total        int

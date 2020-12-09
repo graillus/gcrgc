@@ -10,7 +10,7 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/v1/google"
-	"github.com/graillus/gcrgc/pkg/docker"
+	"github.com/graillus/gcrgc/internal/docker"
 )
 
 // Settings contains app Configuration

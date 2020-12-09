@@ -14,16 +14,15 @@ Initially based on the [gist](https://gist.github.com/ahmetb/7ce6d741bd5baa194a3
 
 ## Features
 
-- Remove images older than the date specified with option `-date`
-- Keep images within a given retention period `-retention-period`
-- Clean up multiple image repositories at once with option `-all`
-- Exclude some image repositories with option `-exclude-repository`
-- Exclude images with certain tag(s) from deletion with option `-exclude-tag`
-- Exclude images with tags matching a regexp pattern with option `-exclude-tag-pattern`
-- Exclude images with tags matching a [SemVer](https://semver.org) pattern with option `-exclude-semver-tags`
+- Remove images older than the date specified with option `--date`
+- Keep images within a given retention period `--retention-period`
+- Exclude some image repositories with option `--exclude-repository`
+- Exclude images with certain tag(s) from deletion with option `--exclude-tag`
+- Exclude images with tags matching a regexp pattern with option `--exclude-tag-pattern`
+- Exclude images with tags matching a [SemVer](https://semver.org) pattern with option `--exclude-semver-tags`
   > Note: The SemVer standard does not include the `v` or `V` prefix (e.g. v1.0.0), but as it is widely used, our Regexp will also match tags beginning with either `v` or `V`, so they will be excluded from deletion as well.
-- Only remove untagged images with `-untagged-only` flag
-- Dry-run mode with option `-dry-run` (don't actually delete images but get same output)
+- Only remove untagged images with `--untagged-only` flag
+- Dry-run mode with option `--dry-run` (don't actually delete images but get same output)
 
 ## Prerequisites
 
@@ -71,29 +70,66 @@ docker run -t --rm \
 
 ## Usage
 
-Clean up untagged images under the `gcr.io/project-id/my-image` repository.
 ```bash
-gcrgc -registry=gcr.io/project-id -untagged-only my-image
+gcrgc [options] <registry>
 ```
 
-Clean up tagged and untagged images under the `gcr.io/project-id/my-image` repository older than 2019-01-01, excluding tags `master` and `latest`
+### Examples:
+
+To cleanup the entire registry, run:
 ```bash
-gcrgc -registry=gcr.io/project-id -date=2019-01-01 -exclude-tag=latest -exclude-tag=master my-image
+gcrgc gcr.io/project-id
+```
+> Warning ! All the repositories for that particular GCP project will be autodiscovered and cleaned.
+Running this command will empty the entire registry !
+
+You can set a retention period to keep the recent images and only clean the old ones.
+
+Keep the images less than 30 days old:
+```bash
+gcrgc --retention-period=30d gcr.io/project-id
 ```
 
-Clean up images older than 30 days
+Can also be expressed with an absolute date:
 ```bash
-gcrgc -registry=gcr.io/project-id -retention-period 30d
+gcrgc --date=2019-01-01 gcr.io/project-id
 ```
 
-Clean up tagged and untagged images under the `gcr.io/project-id/my-image` excluding SemVer tags and `latest`
+To limit the repositories to cleanup, you can either whitelist or blacklist a subset of repositories in the registry:
+
+Cleanup the `gcr.io/project-id/nginx` and `gcr.io/project-id/my-app` repositories:
 ```bash
-gcrgc -registry=gcr.io/project-id -exclude-tag=latest -exclude-semver-tags my-image
+gcrgc --repositories=nginx,my-app gcr.io/project-id
 ```
 
-Clean up tagged and untagged images under the entire registry `gcr.io/project-id` older than 2019-01-01, excluding the images under `gcr.io/project-id/my-image`
+Cleanup everything BUT the `gcr.io/project-id/nginx` and `gcr.io/project-id/my-app` repositories:
 ```bash
-gcrgc -registry=gcr.io/project-id -all -date=2019-01-01 -exclude-repository=my-image
+gcrgc --exclude-repositories=nginx,my-app gcr.io/project-id
+```
+
+You probably want to ensure the images with a certain tag are excluded from deletion:
+```bash
+gcrgc --exclude-tags=latest,other-tag gcr.io/project-id
+```
+
+Or, only clean untagged images:
+```bash
+gcrgc --untagged-only gcr.io/project-id
+```
+
+For more advanced control over tags exclution there are additional options:
+
+Exclude tags matching a SemVer pattern (like `v1.0.0`):
+```bash
+gcrgc --exclude-semver-tags gcr.io/project-id
+```
+
+Exclude tags matching custom regexp patterns:
+```bash
+gcrgc \
+  --exclude-tag-pattern '^release-.*' \
+  --exclude-tag-pattern '^dev-.*' \
+  gcr.io/project-id
 ```
 
 ## Helm chart
