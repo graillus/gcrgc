@@ -28,7 +28,7 @@ func TestGetsTaskList(t *testing.T) {
 	var settings = Settings{
 		Registry:            "gcr.io/foo",
 		AllRepositories:     true,
-		Date:                nil,
+		Date:                time.Time{},
 		ExcludeSemVerTags:   true,
 		ExcludedTagPatterns: []string{"^excluded-pattern-[0-9]*$"},
 		ExcludedTags:        []string{"excluded"},

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"regexp"
 	"strings"
 	"time"
 
@@ -17,7 +16,7 @@ import (
 type Settings struct {
 	Registry             string
 	Repositories         []string
-	Date                 *time.Time
+	Date                 time.Time
 	UntaggedOnly         bool
 	DryRun               bool
 	AllRepositories      bool
@@ -43,38 +42,18 @@ func (app *App) Start() {
 	gcr := NewGCR(auth)
 
 	fmt.Printf("Fetching repositories in registry [%s]\n", app.settings.Registry)
-	repos := gcr.ListRepositories(app.settings.Registry)
-	registry := docker.NewRegistry(app.settings.Registry, repos)
-	fmt.Printf("%d repositories found\n", len(repos))
+	repositories := gcr.ListRepositories(app.settings.Registry)
 
-	filteredRepos := getRepoList(registry, app.settings)
-	tasks := getTaskList(gcr, filteredRepos, app.settings)
+	registry := docker.NewRegistry(app.settings.Registry, repositories)
+	fmt.Printf("%d repositories found\n", len(repositories))
 
-	if len(tasks) == 0 {
-		fmt.Println("Nothing to do.")
+	tasks := getTaskList(
+		gcr,
+		getRepositoryList(registry, app.settings),
+		app.settings,
+	)
 
-		return
-	}
-
-	r := newReport()
-	for k, v := range tasks {
-		if len(v) == 0 {
-			fmt.Printf("No images to clean in repository [%s]\n", k)
-
-			continue
-		}
-
-		fmt.Printf("Cleaning repository [%s] (%d matches)\n", k, len(v))
-
-		for _, i := range v {
-			fmt.Printf("Deleting %s %s\n", i.Digest, strings.Join(i.Tags, ", "))
-			gcr.DeleteImage(k, &i, app.settings.DryRun)
-			r.reportImage(i)
-		}
-	}
-
-	fmt.Printf("Done\n\n")
-	fmt.Printf("Deleted images: %d/%d\n", r.TotalDeleted(), r.Total())
+	doDelete(gcr, tasks, app.settings.DryRun)
 }
 
 func createAuthenticator() authn.Authenticator {
@@ -98,37 +77,62 @@ func createAuthenticator() authn.Authenticator {
 
 type taskList map[string][]docker.Image
 
-func getTaskList(gcr docker.Provider, repos []docker.Repository, s *Settings) taskList {
-	const semverPattern = `^[vV]?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`
-	var exclTagRegexps []*regexp.Regexp
-
-	for _, p := range s.ExcludedTagPatterns {
-		regexp := regexp.MustCompile(p)
-		exclTagRegexps = append(exclTagRegexps, regexp)
-	}
-
-	if s.ExcludeSemVerTags == true {
-		regexp := regexp.MustCompile(semverPattern)
-		exclTagRegexps = append(exclTagRegexps, regexp)
-	}
-
+// Browse the registry to find out which images have to be deleted
+func getTaskList(gcr docker.Provider, repository []docker.Repository, s *Settings) taskList {
 	tasks := make(taskList)
 
 	// By default all images pushed before the current time will be taken into account
 	var date = time.Now()
-	if s.Date != nil {
+	if s.Date != (time.Time{}) {
 		// If date setting is set we use its value instead
-		date = *s.Date
+		date = s.Date
 	}
 
-	for _, repo := range repos {
+	// Create filters to decide which images should be deleted
+	filters := []ImageFilter{
+		UntaggedFilter{s.UntaggedOnly},
+		NewTagNameRegexFilter(s.ExcludedTags),
+		NewSemVerTagNameFilter(s.ExcludeSemVerTags),
+	}
+
+	for _, repo := range repository {
 		imgs := gcr.ListImages(repo.Name, date)
 
-		filteredImgs := getImageList(imgs, s.UntaggedOnly, s.ExcludedTags, exclTagRegexps)
+		filteredImgs := filterImages(imgs, filters)
 
 		tasks[repo.Name] = filteredImgs
 		fmt.Printf("%d matches for repository [%s]\n", len(filteredImgs), repo.Name)
 	}
 
 	return tasks
+}
+
+// Delete the images from remote registry
+func doDelete(gcr docker.Provider, tasks taskList, dryRun bool) {
+	if len(tasks) == 0 {
+		fmt.Println("Nothing to do.")
+
+		return
+	}
+
+	r := newReport()
+	for k, v := range tasks {
+		if len(v) == 0 {
+			fmt.Printf("No images to clean in repository [%s]\n", k)
+
+			continue
+		}
+
+		fmt.Printf("Cleaning repository [%s] (%d matches)\n", k, len(v))
+
+		for _, i := range v {
+			fmt.Printf("Deleting %s %s\n", i.Digest, strings.Join(i.Tags, ", "))
+			gcr.DeleteImage(k, &i, dryRun)
+
+			r.reportImage(i)
+		}
+	}
+
+	fmt.Printf("Done\n\n")
+	fmt.Printf("Deleted images: %d/%d\n", r.TotalDeleted(), r.Total())
 }
