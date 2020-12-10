@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/graillus/gcrgc/pkg/docker"
+	"github.com/graillus/gcrgc/internal/docker"
 )
 
 type fakeProvider struct{}

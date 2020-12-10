@@ -3,7 +3,7 @@ package gcrgc
 import (
 	"testing"
 
-	"github.com/graillus/gcrgc/pkg/docker"
+	"github.com/graillus/gcrgc/internal/docker"
 )
 
 func TestTotal(t *testing.T) {

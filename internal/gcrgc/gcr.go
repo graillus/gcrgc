@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/graillus/gcrgc/pkg/docker"
+	"github.com/graillus/gcrgc/internal/docker"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"

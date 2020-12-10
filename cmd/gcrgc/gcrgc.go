@@ -1,118 +1,109 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
-	"github.com/graillus/gcrgc/pkg/gcrgc"
 	"github.com/k1LoW/duration"
+	flag "github.com/spf13/pflag"
+
+	"github.com/graillus/gcrgc/internal/gcrgc"
 )
 
-type stringList []string
-
-func (s *stringList) String() string {
-	return strings.Join(*s, ", ")
-}
-
-func (s *stringList) Set(value string) error {
-	*s = append(*s, value)
-
-	return nil
+func printUsage() {
+	fmt.Println("Usage:")
+	fmt.Println("gcrgc [options] <registry>")
+	fmt.Println("")
+	fmt.Println("The registry argument should have the form gcr.io/<project-id>")
+	fmt.Println("")
+	fmt.Println("List of possible options:")
+	flag.PrintDefaults()
 }
 
 // ParseArgs parses compmand-line args and returns a Settings instance
 func ParseArgs() *gcrgc.Settings {
 	var (
-		exclRepos       stringList
-		exclTags        stringList
-		exclTagPatterns stringList
+		help            bool
 		limitDate       string
 		retentionPeriod string
 	)
 
+	flag.BoolVar(&help, "help", false, "Print the command usage")
+
 	settings := gcrgc.Settings{}
 
-	flag.StringVar(&settings.Registry, "registry", "", "Google Cloud Registry name, e.g. \"gcr.io/project-id\". Some repositories can be excluded with -exclude-repository option")
-	flag.StringVar(&limitDate, "date", "", "Delete images older than YYYY-MM-DD")
-	flag.StringVar(&retentionPeriod, "retention-period", "", "Retention period in weeks, days, hours, etc.... Older items will be deleted. e.g: `30 days`, `1w`, `24h`")
-	flag.BoolVar(&settings.AllRepositories, "all", false, "Include all repositories from the registry. Defaults to false.")
+	flag.StringSliceVar(&settings.Repositories, "repositories", []string{}, "A comma-separated list of repositories to include in the cleanup process.")
+	flag.StringVar(&limitDate, "date", "", "Only delete images older than YYYY-MM-DD")
+	flag.StringVar(&retentionPeriod, "retention-period", "", "The retention period: only older items will be deleted. Must have the form: `30 days`, `1w`, `24h`")
 	flag.BoolVar(&settings.UntaggedOnly, "untagged-only", false, "Only remove untagged images. Defaults to false.")
-	flag.BoolVar(&settings.DryRun, "dry-run", false, "See images to be deleted without actually deleting them. Defaults to false.")
-	flag.Var(&exclRepos, "exclude-repository", "Repo(s) to be excluded, to be used in addition with the -all option. Can be repeated.")
-	flag.Var(&exclTags, "exclude-tag", "Tag(s) to be excluded. Can be repeated.")
-	flag.Var(&exclTagPatterns, "exclude-tag-pattern", "Tag patterns(s) to be excluded. Can be repeated.")
+	flag.BoolVar(&settings.DryRun, "dry-run", false, "Only see the output of what would be deleted but don't actually delete anything. Defaults to false.")
+	flag.StringSliceVar(&settings.ExcludedRepositories, "exclude-repositories", []string{}, "A comma-separated list of repositories to be excluded. Not compatible with the --repositories option.")
+	flag.StringSliceVar(&settings.ExcludedTags, "exclude-tags", []string{}, "A comma-separated list of tag(s) to be excluded.")
+	flag.StringArrayVar(&settings.ExcludedTagPatterns, "exclude-tag-pattern", []string{}, "Tag patterns(s) to be excluded. Repeat the option to provide many.")
 	flag.BoolVar(&settings.ExcludeSemVerTags, "exclude-semver-tags", false, "Only remove images not tagged with a SemVer tag. Defaults to false.")
 
 	flag.Parse()
-	settings.ExcludedRepositories = exclRepos
-	settings.ExcludedTags = exclTags
-	settings.ExcludedTagPatterns = exclTagPatterns
+
+	if help == true {
+		printUsage()
+		os.Exit(0)
+	}
 
 	args := flag.Args()
-	settings.Repositories = args
+	if len(args) < 1 {
+		fmt.Printf("Error: The \"registry\" argument was not provided\n\n")
+		printUsage()
+		os.Exit(1)
+	}
+	settings.Registry = args[0]
 
 	if limitDate != "" {
 		date, err := time.Parse("2006-01-02", limitDate)
 		if err != nil {
-			fmt.Println("Unable to parse the -date flag: invalid date format")
-			flag.PrintDefaults()
+			fmt.Printf("Error: Unable to parse the --date flag: invalid date format: %s\n", limitDate)
+			os.Exit(1)
 		}
 
 		settings.Date = &date
 	}
 
 	if retentionPeriod != "" && settings.Date != nil {
-		fmt.Println("Flags -date and -retention-period are not compatible. Ony one of them can be provided")
-		flag.PrintDefaults()
+		fmt.Println("Error: The --date and --retention-period flags are not compatible. Ony one of them can be provided")
 		os.Exit(1)
 	}
 
 	if retentionPeriod != "" {
 		parsedDuration, err := duration.Parse(retentionPeriod)
 		if err != nil {
-			fmt.Println("Unable to parse the -retention-period flag")
-			flag.PrintDefaults()
+			fmt.Println("Unable to parse the --retention-period flag. Run with the --help flag for more information")
 			os.Exit(1)
 		}
 		date := time.Now().Add(-parsedDuration)
 		settings.Date = &date
 	}
 
-	if settings.Registry == "" {
-		fmt.Println("The -registry option is missing")
-		flag.PrintDefaults()
-		os.Exit(1)
+	if len(settings.Repositories) == 0 {
+		settings.AllRepositories = true
 	}
 
-	if settings.AllRepositories == false && len(settings.Repositories) == 0 {
-		fmt.Println("You must provide at least one repository name, or set the -all option to include all repositories from the registry")
-		flag.PrintDefaults()
-		os.Exit(1)
-	}
-
-	if settings.AllRepositories == false && len(settings.ExcludedRepositories) > 0 {
-		fmt.Println("You cannot exclude repositories unless using option -all")
-		flag.PrintDefaults()
+	if len(settings.Repositories) > 0 && len(settings.ExcludedRepositories) > 0 {
+		fmt.Println("Error: The --repositories and the --exclude-repositories flags cannot be provided altogether")
 		os.Exit(1)
 	}
 
 	if settings.UntaggedOnly == true && len(settings.ExcludedTags) > 0 {
-		fmt.Println("You cannot exclude tags when option -untagged-only is true")
-		flag.PrintDefaults()
+		fmt.Println("Error: The --exclude-tags and the --untagged-only flags cannot be provided altogether")
 		os.Exit(1)
 	}
 
 	if settings.UntaggedOnly == true && len(settings.ExcludedTagPatterns) > 0 {
-		fmt.Println("You cannot exclude tag patterns when option -untagged-only is true")
-		flag.PrintDefaults()
+		fmt.Println("Error: The --exclude-tag-pattern and the --untagged-only flags cannot be provided altogether")
 		os.Exit(1)
 	}
 
 	if settings.UntaggedOnly == true && settings.ExcludeSemVerTags == true {
-		fmt.Println("You cannot exclude semver tags when option -untagged-only is true")
+		fmt.Println("Error: The --exclude-semver-tags and the --untagged-only flags cannot be provided altogether")
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
