@@ -91,7 +91,8 @@ func getTaskList(gcr docker.Provider, repository []docker.Repository, s *Setting
 	// Create filters to decide which images should be deleted
 	filters := []ImageFilter{
 		UntaggedFilter{s.UntaggedOnly},
-		NewTagNameRegexFilter(s.ExcludedTags),
+		TagNameFilter{s.ExcludedTags},
+		NewTagNameRegexFilter(s.ExcludedTagPatterns),
 		NewSemVerTagNameFilter(s.ExcludeSemVerTags),
 	}
 

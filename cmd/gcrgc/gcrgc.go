@@ -86,7 +86,7 @@ func ParseArgs() *gcrgc.Settings {
 	settings := gcrgc.Settings{
 		Registry:             viper.GetString("registry"),
 		Repositories:         viper.GetStringSlice("repositories"),
-		ExcludedRepositories: viper.GetStringSlice("excluded-repositories"),
+		ExcludedRepositories: viper.GetStringSlice("exclude-repositories"),
 		UntaggedOnly:         viper.GetBool("untagged-only"),
 		ExcludeSemVerTags:    viper.GetBool("exclude-semver-tags"),
 		ExcludedTags:         viper.GetStringSlice("exclude-tags"),

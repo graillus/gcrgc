@@ -176,15 +176,31 @@ func TestFilterImages(t *testing.T) {
 	})
 
 	t.Run("Exclude tag pattern", func(t *testing.T) {
-		expectedDigests := []string{"untagged"}
+		fakeImages := []docker.Image{
+			// Should match
+			docker.Image{Digest: "0.0.0", Tags: []string{"dev-7.2-fpm", "dev-7.2-fpm-xxx", "dev-7.2.34-fpm"}},
+			docker.Image{Digest: "0.0.0", Tags: []string{"7.2-fpm", "7.2-fpm-xxx", "7.2.34-fpm"}},
+			docker.Image{Digest: "V1.0.0", Tags: []string{"dev-8.0-cli", "dev-8.0-cli-xdebug-3-config", "dev-8.0.0-cli", "dev-8.0.0-cli-xxx"}},
+			docker.Image{Digest: "V1.0.0", Tags: []string{"dev-7.4-cli", "dev-7.4-cli-xdebug-3-config", "dev-7.4.13-cli", "dev-7.4.13-cli-xdebug-3-config"}},
+			// Should not match
+			docker.Image{Digest: "invalid", Tags: []string{"dev-7.4.8-cli"}},
+			docker.Image{Digest: "invalid", Tags: []string{"sometag"}},
+			docker.Image{Digest: "invalid", Tags: []string{"dev-8.0-cli-xdebug-3-config", "8.0.0-cli", "dev-8.0.0-cli-xxx"}},
+		}
+
+		expectedDigests := []string{
+			"invalid",
+			"invalid",
+			"invalid",
+		}
 
 		filters := []ImageFilter{
 			UntaggedFilter{false},
-			TagNameFilter{[]string{}},
-			NewTagNameRegexFilter([]string{"^foo"}),
+			TagNameFilter{[]string{"latest"}},
+			NewTagNameRegexFilter([]string{"^(dev-)?[0-9]\\.[0-9]-(cli|fpm)$"}),
 		}
 
-		actual := filterImages(createFakeImages(), filters)
+		actual := filterImages(fakeImages, filters)
 
 		err := assertImages(expectedDigests, actual)
 		if err != nil {
@@ -195,16 +211,16 @@ func TestFilterImages(t *testing.T) {
 	t.Run("Exclude SemVer tag pattern", func(t *testing.T) {
 		fakeImages := []docker.Image{
 			// Should match
-			docker.Image{Digest: "invalid", Tags: []string{"2020-02-02-12345"}},
-			docker.Image{Digest: "invalid", Tags: []string{"latest"}},
-			docker.Image{Digest: "invalid", Tags: []string{"V1.0.0"}},
-			// Should not match
 			docker.Image{Digest: "0.0.0", Tags: []string{"0.0.0"}},
 			docker.Image{Digest: "v1.0.0", Tags: []string{"v1.0.0"}},
 			docker.Image{Digest: "V1.0.0", Tags: []string{"V1.0.0"}},
 			docker.Image{Digest: "999.999.999", Tags: []string{"999.999.999"}},
 			docker.Image{Digest: "v0.10", Tags: []string{"v0.10"}},
 			docker.Image{Digest: "2.0.0-rc3", Tags: []string{"2.0.0-rc3"}},
+			// Should not match
+			docker.Image{Digest: "invalid", Tags: []string{"2020-02-02-12345"}},
+			docker.Image{Digest: "invalid", Tags: []string{"latest"}},
+			docker.Image{Digest: "invalid", Tags: []string{"V1.0.0"}},
 		}
 
 		expectedDigests := []string{
