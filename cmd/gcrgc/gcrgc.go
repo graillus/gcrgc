@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/k1LoW/duration"
@@ -11,6 +12,8 @@ import (
 
 	"github.com/graillus/gcrgc/internal/gcrgc"
 )
+
+var build = "dev"
 
 func main() {
 	settings := ParseArgs()
@@ -37,8 +40,9 @@ func ParseArgs() *gcrgc.Settings {
 	)
 
 	// Cli config
-	flag.BoolVarP(&help, "help", "p", false, "Print the command usage")
+	flag.BoolVarP(&help, "help", "h", false, "Print the command usage")
 	flag.StringVarP(&file, "config", "c", "", "Path to the configuration file.")
+	flag.BoolP("version", "v", false, "Print build information")
 
 	// App settings
 	flag.StringSlice("repositories", []string{}, "A comma-separated list of repositories to include in the cleanup process.")
@@ -57,6 +61,12 @@ func ParseArgs() *gcrgc.Settings {
 	// Print help and exit if the --help flag was provided
 	if help == true {
 		printUsage()
+		os.Exit(0)
+	}
+
+	// Print build version and exit if the --version flag was provided
+	if viper.GetBool("version") == true {
+		fmt.Printf("gcrgc version %s (%s %s)\n", build, runtime.GOOS, runtime.GOARCH)
 		os.Exit(0)
 	}
 
