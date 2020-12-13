@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gammazero/workerpool"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/v1/google"
 	"github.com/graillus/gcrgc/internal/docker"
@@ -75,12 +76,13 @@ func createAuthenticator() authn.Authenticator {
 	return auth
 }
 
-type taskList map[string][]docker.Image
+type task struct {
+	repository string
+	image      *docker.Image
+}
 
 // Browse the registry to find out which images have to be deleted
-func getTaskList(gcr docker.Provider, repository []docker.Repository, s *Settings) taskList {
-	tasks := make(taskList)
-
+func getTaskList(gcr docker.Provider, repository []docker.Repository, s *Settings) []task {
 	// By default all images pushed before the current time will be taken into account
 	var date = time.Now()
 	if s.Date != (time.Time{}) {
@@ -96,20 +98,26 @@ func getTaskList(gcr docker.Provider, repository []docker.Repository, s *Setting
 		NewSemVerTagNameFilter(s.ExcludeSemVerTags),
 	}
 
+	tasks := []task{}
+
 	for _, repo := range repository {
 		imgs := gcr.ListImages(repo.Name, date)
 
 		filteredImgs := filterImages(imgs, filters)
 
-		tasks[repo.Name] = filteredImgs
 		fmt.Printf("%d matches for repository [%s]\n", len(filteredImgs), repo.Name)
+
+		for _, i := range filteredImgs {
+			img := i
+			tasks = append(tasks, task{repo.Name, &img})
+		}
 	}
 
 	return tasks
 }
 
 // Delete the images from remote registry
-func doDelete(gcr docker.Provider, tasks taskList, dryRun bool) {
+func doDelete(gcr docker.Provider, tasks []task, dryRun bool) {
 	if len(tasks) == 0 {
 		fmt.Println("Nothing to do.")
 
@@ -117,22 +125,22 @@ func doDelete(gcr docker.Provider, tasks taskList, dryRun bool) {
 	}
 
 	r := newReport()
-	for k, v := range tasks {
-		if len(v) == 0 {
-			fmt.Printf("No images to clean in repository [%s]\n", k)
 
-			continue
-		}
+	// Create a pool of 8 workers. The number is arbitrary, but it seems that inscreasing the worker count doesn't affect
+	// the performance since the google container registry API has some kind of per-user rate limiting.
+	wp := workerpool.New(8)
 
-		fmt.Printf("Cleaning repository [%s] (%d matches)\n", k, len(v))
+	// Let's submit the tasks to the workers pool
+	for _, t := range tasks {
+		task := t
+		wp.Submit(func() {
+			fmt.Printf("Deleting %s %s\n", task.image.Digest, strings.Join(task.image.Tags, ", "))
+			gcr.DeleteImage(task.repository, task.image, dryRun)
 
-		for _, i := range v {
-			fmt.Printf("Deleting %s %s\n", i.Digest, strings.Join(i.Tags, ", "))
-			gcr.DeleteImage(k, &i, dryRun)
-
-			r.reportImage(i)
-		}
+			r.reportImage(*task.image)
+		})
 	}
+	wp.StopWait()
 
 	fmt.Printf("Done\n\n")
 	fmt.Printf("Deleted images: %d/%d\n", r.TotalDeleted(), r.Total())
