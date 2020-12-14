@@ -55,6 +55,15 @@ func (app *App) Start() {
 	)
 
 	doDelete(gcr, tasks, app.settings.DryRun)
+
+	// Report deleted images
+	r := newReport()
+	for _, task := range tasks {
+		r.reportImage(*task.image)
+	}
+
+	fmt.Printf("Done\n\n")
+	fmt.Printf("Deleted images: %d/%d\n", r.TotalDeleted(), r.Total())
 }
 
 func createAuthenticator() authn.Authenticator {
@@ -124,8 +133,6 @@ func doDelete(gcr docker.Provider, tasks []task, dryRun bool) {
 		return
 	}
 
-	r := newReport()
-
 	// Create a pool of 8 workers. The number is arbitrary, but it seems that inscreasing the worker count doesn't affect
 	// the performance since the google container registry API has some kind of per-user rate limiting.
 	wp := workerpool.New(8)
@@ -136,12 +143,7 @@ func doDelete(gcr docker.Provider, tasks []task, dryRun bool) {
 		wp.Submit(func() {
 			fmt.Printf("Deleting %s %s\n", task.image.Digest, strings.Join(task.image.Tags, ", "))
 			gcr.DeleteImage(task.repository, task.image, dryRun)
-
-			r.reportImage(*task.image)
 		})
 	}
 	wp.StopWait()
-
-	fmt.Printf("Done\n\n")
-	fmt.Printf("Deleted images: %d/%d\n", r.TotalDeleted(), r.Total())
 }
