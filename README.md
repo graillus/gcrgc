@@ -4,7 +4,7 @@ gcrgc
 [![Build Status](https://travis-ci.org/graillus/gcrgc.svg?branch=master)](https://travis-ci.org/graillus/gcrgc)
 [![codecov.io](http://codecov.io/github/graillus/gcrgc/coverage.svg?branch=master)](http://codecov.io/github/graillus/gcrgc?branch=master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/graillus/gcrgc)](https://goreportcard.com/report/github.com/graillus/gcrgc)
-[![GoDoc](https://godoc.org/github.com/graillus/gcrgc?status.svg)](https://godoc.org/github.com/graillus/gcrgc)
+[![GoDoc](https://godoc.org/github.com/graillus/gcrgc?status.svg)](https://pkg.go.dev/github.com/graillus/gcrgc)
 [![License MIT](https://img.shields.io/github/license/graillus/gcrgc.svg)](https://github.com/graillus/gcrgc/blob/master/LICENSE)
 
 The GCR Garbage Collector
@@ -16,8 +16,8 @@ Initially based on the [gist](https://gist.github.com/ahmetb/7ce6d741bd5baa194a3
 
 - Remove images older than the date specified with option `--date`
 - Keep images within a given retention period `--retention-period`
-- Exclude some image repositories with option `--exclude-repository`
-- Exclude images with certain tag(s) from deletion with option `--exclude-tag`
+- Exclude some image repositories with option `--exclude-repositories`
+- Exclude images with certain tag(s) from deletion with option `--exclude-tags`
 - Exclude images with tags matching a regexp pattern with option `--exclude-tag-pattern`
 - Exclude images with tags matching a [SemVer](https://semver.org) pattern with option `--exclude-semver-tags`
   > Note: The SemVer standard does not include the `v` or `V` prefix (e.g. v1.0.0), but as it is widely used, our Regexp will also match tags beginning with either `v` or `V`, so they will be excluded from deletion as well.
@@ -37,7 +37,7 @@ You can use a service account as well by setting the `GOOGLE_APPLICATION_CREDENT
 1. Download your [desired version](https://github.com/graillus/gcrgc/releases)
 2. Extract it
 ```bash
-tar xvf gcrgc_0.3.2_linux_amd64.tar.gz
+tar xvf gcrgc_0.4.0_linux_amd64.tar.gz
 ```
 3. Move binary to desired destination
 ```bash
