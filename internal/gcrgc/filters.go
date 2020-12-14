@@ -7,7 +7,7 @@ import (
 	"github.com/graillus/gcrgc/internal/docker"
 )
 
-func getRepoList(registry *docker.Registry, s *Settings) []docker.Repository {
+func getRepositoryList(registry *docker.Registry, s *Settings) []docker.Repository {
 	var repos []docker.Repository
 
 	// Make a list of repositories to exclude prefixed with registry name
@@ -23,9 +23,9 @@ func getRepoList(registry *docker.Registry, s *Settings) []docker.Repository {
 	}
 
 	if s.AllRepositories == true {
-		repos = excludeRepos(registry, exclRepos)
+		repos = excludeRepositories(registry, exclRepos)
 	} else {
-		repos = includeRepos(registry, inclRepos)
+		repos = includeRepositories(registry, inclRepos)
 	}
 
 	return repos
@@ -35,7 +35,7 @@ func repositoryName(registry string, image string) string {
 	return registry + "/" + image
 }
 
-func excludeRepos(registry *docker.Registry, toExclude []string) []docker.Repository {
+func excludeRepositories(registry *docker.Registry, toExclude []string) []docker.Repository {
 	included := registry.Repositories
 
 	for _, repoName := range toExclude {
@@ -55,7 +55,7 @@ func excludeRepos(registry *docker.Registry, toExclude []string) []docker.Reposi
 	return included
 }
 
-func includeRepos(registry *docker.Registry, toInclude []string) []docker.Repository {
+func includeRepositories(registry *docker.Registry, toInclude []string) []docker.Repository {
 	var included []docker.Repository
 
 	for _, repoName := range toInclude {
@@ -71,30 +71,109 @@ func includeRepos(registry *docker.Registry, toInclude []string) []docker.Reposi
 	return included
 }
 
-func getImageList(imgs []docker.Image, untaggedOnly bool, exludedTags []string, exclTagRegexps []*regexp.Regexp) []docker.Image {
-	var filteredImgs []docker.Image
+func filterImages(imgs []docker.Image, filters []ImageFilter) []docker.Image {
+	if len(filters) == 0 {
+		return imgs
+	}
+
+	var list []docker.Image
 	for _, img := range imgs {
-		if untaggedOnly && img.IsTagged() {
-			continue
+		// All filters must return true for the image to be eligible for deletion
+		eligible := true
+		for _, f := range filters {
+			eligible = f.Apply(&img) && eligible
 		}
 
-		exclude := false
-		for _, excl := range exludedTags {
-			if img.HasTag(excl) {
-				exclude = true
-			}
-		}
-
-		for _, excl := range exclTagRegexps {
-			if img.HasTagRegexp(excl) {
-				exclude = true
-			}
-		}
-
-		if !exclude {
-			filteredImgs = append(filteredImgs, img)
+		if eligible {
+			list = append(list, img)
 		}
 	}
 
-	return filteredImgs
+	return list
+}
+
+// ImageFilter is an interface for docker image filters
+type ImageFilter interface {
+	// Apply should return true if the image should be planned for deletion
+	Apply(i *docker.Image) bool
+}
+
+// UntaggedFilter filters images that have no tag
+type UntaggedFilter struct {
+	enabled bool
+}
+
+// Apply returns true when the image has no tags
+func (f UntaggedFilter) Apply(img *docker.Image) bool {
+	if f.enabled == false {
+		// Filter is disabled, image is eligible for deletion
+		return true
+	}
+
+	return !img.IsTagged()
+}
+
+// TagNameFilter compares the image tags against the exclusion list.
+type TagNameFilter struct {
+	excluded []string
+}
+
+// Apply returns true if if no tag was in the exclusion list.
+func (f TagNameFilter) Apply(img *docker.Image) bool {
+	for _, tag := range f.excluded {
+		if img.HasTag(tag) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// TagNameRegexFilter compares the image tags against regular expressions from the exclusion list.
+type TagNameRegexFilter struct {
+	excluded []*regexp.Regexp
+}
+
+// NewTagNameRegexFilter creates a new SemVerTagNameFilter
+func NewTagNameRegexFilter(patterns []string) *TagNameRegexFilter {
+	var re []*regexp.Regexp
+
+	for _, p := range patterns {
+		re = append(re, regexp.MustCompile(p))
+	}
+
+	return &TagNameRegexFilter{re}
+}
+
+// Apply returns true if if no tag was in the exclusion list.
+func (f TagNameRegexFilter) Apply(img *docker.Image) bool {
+	for _, re := range f.excluded {
+		if img.HasTagRegexp(re) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// SemVerTagNameFilter compares the image tags against regular expressions from the exclusion list.
+type SemVerTagNameFilter struct {
+	enabled bool
+	regex   *regexp.Regexp
+}
+
+// NewSemVerTagNameFilter creates a new SemVerTagNameFilter
+func NewSemVerTagNameFilter(enabled bool) *SemVerTagNameFilter {
+	const semverPattern = `^[vV]?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`
+
+	return &SemVerTagNameFilter{
+		enabled,
+		regexp.MustCompile(semverPattern),
+	}
+}
+
+// Apply returns true if if no tag was in the exclusion list.
+func (f *SemVerTagNameFilter) Apply(img *docker.Image) bool {
+
+	return !img.HasTagRegexp(f.regex)
 }

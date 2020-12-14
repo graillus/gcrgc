@@ -132,6 +132,30 @@ gcrgc \
   gcr.io/project-id
 ```
 
+### Using a configuration file
+
+Instead of passing command-line flags, it is possible reference a configuration file instead:
+```bash
+gcrgc --config config.yaml
+```
+
+The config file matches the same structure as the command line options. Any option can be configured both in the command line and the configuration file.
+The command line flags have a higher priority than the configuration defined in the file, so it's possible to override the file configuration with command line flags.
+
+config.yaml:
+```yaml
+registry: gcr.io/project-id
+retention-period: 30d
+exclude-repositories:
+  - nginx
+  - my-app
+exclude-semver-tags: true
+exclude-tags:
+  - latest
+exclude-tag-pattern:
+  - ^release-([0-9]+\.)+[0-9]+$
+```
+
 ## Helm chart
 
 A Helm chart is available if you wish to run it on a Kubernetes cluster (as a `CronJob`).

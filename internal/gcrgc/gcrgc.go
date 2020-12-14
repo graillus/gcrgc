@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"regexp"
 	"strings"
 	"time"
 
+	"github.com/gammazero/workerpool"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/v1/google"
 	"github.com/graillus/gcrgc/internal/docker"
@@ -17,7 +17,7 @@ import (
 type Settings struct {
 	Registry             string
 	Repositories         []string
-	Date                 *time.Time
+	Date                 time.Time
 	UntaggedOnly         bool
 	DryRun               bool
 	AllRepositories      bool
@@ -43,34 +43,23 @@ func (app *App) Start() {
 	gcr := NewGCR(auth)
 
 	fmt.Printf("Fetching repositories in registry [%s]\n", app.settings.Registry)
-	repos := gcr.ListRepositories(app.settings.Registry)
-	registry := docker.NewRegistry(app.settings.Registry, repos)
-	fmt.Printf("%d repositories found\n", len(repos))
+	repositories := gcr.ListRepositories(app.settings.Registry)
 
-	filteredRepos := getRepoList(registry, app.settings)
-	tasks := getTaskList(gcr, filteredRepos, app.settings)
+	registry := docker.NewRegistry(app.settings.Registry, repositories)
+	fmt.Printf("%d repositories found\n", len(repositories))
 
-	if len(tasks) == 0 {
-		fmt.Println("Nothing to do.")
+	tasks := getTaskList(
+		gcr,
+		getRepositoryList(registry, app.settings),
+		app.settings,
+	)
 
-		return
-	}
+	doDelete(gcr, tasks, app.settings.DryRun)
 
+	// Report deleted images
 	r := newReport()
-	for k, v := range tasks {
-		if len(v) == 0 {
-			fmt.Printf("No images to clean in repository [%s]\n", k)
-
-			continue
-		}
-
-		fmt.Printf("Cleaning repository [%s] (%d matches)\n", k, len(v))
-
-		for _, i := range v {
-			fmt.Printf("Deleting %s %s\n", i.Digest, strings.Join(i.Tags, ", "))
-			gcr.DeleteImage(k, &i, app.settings.DryRun)
-			r.reportImage(i)
-		}
+	for _, task := range tasks {
+		r.reportImage(*task.image)
 	}
 
 	fmt.Printf("Done\n\n")
@@ -96,39 +85,65 @@ func createAuthenticator() authn.Authenticator {
 	return auth
 }
 
-type taskList map[string][]docker.Image
+type task struct {
+	repository string
+	image      *docker.Image
+}
 
-func getTaskList(gcr docker.Provider, repos []docker.Repository, s *Settings) taskList {
-	const semverPattern = `^[vV]?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`
-	var exclTagRegexps []*regexp.Regexp
-
-	for _, p := range s.ExcludedTagPatterns {
-		regexp := regexp.MustCompile(p)
-		exclTagRegexps = append(exclTagRegexps, regexp)
-	}
-
-	if s.ExcludeSemVerTags == true {
-		regexp := regexp.MustCompile(semverPattern)
-		exclTagRegexps = append(exclTagRegexps, regexp)
-	}
-
-	tasks := make(taskList)
-
+// Browse the registry to find out which images have to be deleted
+func getTaskList(gcr docker.Provider, repository []docker.Repository, s *Settings) []task {
 	// By default all images pushed before the current time will be taken into account
 	var date = time.Now()
-	if s.Date != nil {
+	if s.Date != (time.Time{}) {
 		// If date setting is set we use its value instead
-		date = *s.Date
+		date = s.Date
 	}
 
-	for _, repo := range repos {
+	// Create filters to decide which images should be deleted
+	filters := []ImageFilter{
+		UntaggedFilter{s.UntaggedOnly},
+		TagNameFilter{s.ExcludedTags},
+		NewTagNameRegexFilter(s.ExcludedTagPatterns),
+		NewSemVerTagNameFilter(s.ExcludeSemVerTags),
+	}
+
+	tasks := []task{}
+
+	for _, repo := range repository {
 		imgs := gcr.ListImages(repo.Name, date)
 
-		filteredImgs := getImageList(imgs, s.UntaggedOnly, s.ExcludedTags, exclTagRegexps)
+		filteredImgs := filterImages(imgs, filters)
 
-		tasks[repo.Name] = filteredImgs
 		fmt.Printf("%d matches for repository [%s]\n", len(filteredImgs), repo.Name)
+
+		for _, i := range filteredImgs {
+			img := i
+			tasks = append(tasks, task{repo.Name, &img})
+		}
 	}
 
 	return tasks
+}
+
+// Delete the images from remote registry
+func doDelete(gcr docker.Provider, tasks []task, dryRun bool) {
+	if len(tasks) == 0 {
+		fmt.Println("Nothing to do.")
+
+		return
+	}
+
+	// Create a pool of 8 workers. The number is arbitrary, but it seems that inscreasing the worker count doesn't affect
+	// the performance since the google container registry API has some kind of per-user rate limiting.
+	wp := workerpool.New(8)
+
+	// Let's submit the tasks to the workers pool
+	for _, t := range tasks {
+		task := t
+		wp.Submit(func() {
+			fmt.Printf("Deleting %s %s\n", task.image.Digest, strings.Join(task.image.Tags, ", "))
+			gcr.DeleteImage(task.repository, task.image, dryRun)
+		})
+	}
+	wp.StopWait()
 }

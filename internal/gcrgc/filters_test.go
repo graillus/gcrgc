@@ -3,7 +3,6 @@ package gcrgc
 import (
 	"errors"
 	"fmt"
-	"regexp"
 	"testing"
 
 	"github.com/graillus/gcrgc/internal/docker"
@@ -19,7 +18,7 @@ func TestGetRepoList(t *testing.T) {
 		expected := []docker.Repository{
 			docker.Repository{Name: "gcr.io/project/repo1"},
 		}
-		actual := getRepoList(createFakeRegistry(), s)
+		actual := getRepositoryList(createFakeRegistry(), s)
 
 		err := assertRepositories(expected, actual)
 		if err != nil {
@@ -34,7 +33,7 @@ func TestGetRepoList(t *testing.T) {
 		}
 
 		expected := []docker.Repository{}
-		actual := getRepoList(createFakeRegistry(), s)
+		actual := getRepositoryList(createFakeRegistry(), s)
 
 		err := assertRepositories(expected, actual)
 		if err != nil {
@@ -50,7 +49,7 @@ func TestGetRepoList(t *testing.T) {
 			docker.Repository{Name: "gcr.io/project/repo2"},
 			docker.Repository{Name: "gcr.io/project/repo3"},
 		}
-		actual := getRepoList(createFakeRegistry(), s)
+		actual := getRepositoryList(createFakeRegistry(), s)
 
 		err := assertRepositories(expected, actual)
 		if err != nil {
@@ -68,7 +67,7 @@ func TestGetRepoList(t *testing.T) {
 			docker.Repository{Name: "gcr.io/project/repo1"},
 			docker.Repository{Name: "gcr.io/project/repo3"},
 		}
-		actual := getRepoList(createFakeRegistry(), s)
+		actual := getRepositoryList(createFakeRegistry(), s)
 
 		err := assertRepositories(expected, actual)
 		if err != nil {
@@ -87,7 +86,7 @@ func TestGetRepoList(t *testing.T) {
 			docker.Repository{Name: "gcr.io/project/repo2"},
 			docker.Repository{Name: "gcr.io/project/repo3"},
 		}
-		actual := getRepoList(createFakeRegistry(), s)
+		actual := getRepositoryList(createFakeRegistry(), s)
 
 		err := assertRepositories(expected, actual)
 		if err != nil {
@@ -131,11 +130,13 @@ func assertRepositories(expected []docker.Repository, actual []docker.Repository
 	return nil
 }
 
-func TestGetImageList(t *testing.T) {
+func TestFilterImages(t *testing.T) {
 	t.Run("No filter", func(t *testing.T) {
 		expectedDigests := []string{"untagged", "foo", "foo-bar-baz"}
 
-		actual := getImageList(createFakeImages(), false, []string{}, []*regexp.Regexp{})
+		filters := []ImageFilter{}
+
+		actual := filterImages(createFakeImages(), filters)
 
 		err := assertImages(expectedDigests, actual)
 		if err != nil {
@@ -146,7 +147,11 @@ func TestGetImageList(t *testing.T) {
 	t.Run("Untagged Only", func(t *testing.T) {
 		expectedDigests := []string{"untagged"}
 
-		actual := getImageList(createFakeImages(), true, []string{}, []*regexp.Regexp{})
+		filters := []ImageFilter{
+			UntaggedFilter{true},
+		}
+
+		actual := filterImages(createFakeImages(), filters)
 
 		err := assertImages(expectedDigests, actual)
 		if err != nil {
@@ -157,7 +162,12 @@ func TestGetImageList(t *testing.T) {
 	t.Run("Exclude tag", func(t *testing.T) {
 		expectedDigests := []string{"untagged", "foo"}
 
-		actual := getImageList(createFakeImages(), false, []string{"bar"}, []*regexp.Regexp{})
+		filters := []ImageFilter{
+			UntaggedFilter{false},
+			TagNameFilter{[]string{"bar"}},
+		}
+
+		actual := filterImages(createFakeImages(), filters)
 
 		err := assertImages(expectedDigests, actual)
 		if err != nil {
@@ -166,11 +176,64 @@ func TestGetImageList(t *testing.T) {
 	})
 
 	t.Run("Exclude tag pattern", func(t *testing.T) {
-		expectedDigests := []string{"untagged"}
+		fakeImages := []docker.Image{
+			// Should match
+			docker.Image{Digest: "0.0.0", Tags: []string{"dev-7.2-fpm", "dev-7.2-fpm-xxx", "dev-7.2.34-fpm"}},
+			docker.Image{Digest: "0.0.0", Tags: []string{"7.2-fpm", "7.2-fpm-xxx", "7.2.34-fpm"}},
+			docker.Image{Digest: "V1.0.0", Tags: []string{"dev-8.0-cli", "dev-8.0-cli-xdebug-3-config", "dev-8.0.0-cli", "dev-8.0.0-cli-xxx"}},
+			docker.Image{Digest: "V1.0.0", Tags: []string{"dev-7.4-cli", "dev-7.4-cli-xdebug-3-config", "dev-7.4.13-cli", "dev-7.4.13-cli-xdebug-3-config"}},
+			// Should not match
+			docker.Image{Digest: "invalid", Tags: []string{"dev-7.4.8-cli"}},
+			docker.Image{Digest: "invalid", Tags: []string{"sometag"}},
+			docker.Image{Digest: "invalid", Tags: []string{"dev-8.0-cli-xdebug-3-config", "8.0.0-cli", "dev-8.0.0-cli-xxx"}},
+		}
 
-		re := regexp.MustCompile("^foo")
+		expectedDigests := []string{
+			"invalid",
+			"invalid",
+			"invalid",
+		}
 
-		actual := getImageList(createFakeImages(), false, []string{}, []*regexp.Regexp{re})
+		filters := []ImageFilter{
+			UntaggedFilter{false},
+			TagNameFilter{[]string{"latest"}},
+			NewTagNameRegexFilter([]string{"^(dev-)?[0-9]\\.[0-9]-(cli|fpm)$"}),
+		}
+
+		actual := filterImages(fakeImages, filters)
+
+		err := assertImages(expectedDigests, actual)
+		if err != nil {
+			t.Error(err)
+		}
+	})
+
+	t.Run("Exclude SemVer tag pattern", func(t *testing.T) {
+		fakeImages := []docker.Image{
+			// Should match
+			docker.Image{Digest: "0.0.0", Tags: []string{"0.0.0"}},
+			docker.Image{Digest: "v1.0.0", Tags: []string{"v1.0.0"}},
+			docker.Image{Digest: "V1.0.0", Tags: []string{"V1.0.0"}},
+			docker.Image{Digest: "999.999.999", Tags: []string{"999.999.999"}},
+			docker.Image{Digest: "v0.10", Tags: []string{"v0.10"}},
+			docker.Image{Digest: "2.0.0-rc3", Tags: []string{"2.0.0-rc3"}},
+			// Should not match
+			docker.Image{Digest: "invalid", Tags: []string{"2020-02-02-12345"}},
+			docker.Image{Digest: "invalid", Tags: []string{"latest"}},
+			docker.Image{Digest: "invalid", Tags: []string{"V1.0.0"}},
+		}
+
+		expectedDigests := []string{
+			"invalid",
+			"invalid",
+			"invalid",
+		}
+
+		filters := []ImageFilter{
+			NewSemVerTagNameFilter(true),
+		}
+
+		actual := filterImages(fakeImages, filters)
 
 		err := assertImages(expectedDigests, actual)
 		if err != nil {
