@@ -3,7 +3,7 @@ module github.com/graillus/gcrgc
 go 1.17
 
 require (
-	github.com/gammazero/workerpool v1.1.1
+	github.com/gammazero/workerpool v1.1.2
 	github.com/google/go-containerregistry v0.4.1
 	github.com/k1LoW/duration v1.1.0
 	github.com/spf13/pflag v1.0.5
@@ -17,7 +17,7 @@ require (
 	github.com/docker/docker v1.4.2-0.20190924003213-a8608b5b67c7 // indirect
 	github.com/docker/docker-credential-helpers v0.6.3 // indirect
 	github.com/fsnotify/fsnotify v1.4.7 // indirect
-	github.com/gammazero/deque v0.0.0-20200721202602-07291166fe33 // indirect
+	github.com/gammazero/deque v0.1.0 // indirect
 	github.com/golang/protobuf v1.4.3 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/magiconair/properties v1.8.1 // indirect
