@@ -37,7 +37,7 @@ You can use a service account as well by setting the `GOOGLE_APPLICATION_CREDENT
 1. Download your [desired version](https://github.com/graillus/gcrgc/releases)
 2. Extract it
 ```bash
-tar xvf gcrgc_0.4.0_linux_amd64.tar.gz
+tar xvf gcrgc_0.4.4_linux_amd64.tar.gz
 ```
 3. Move binary to desired destination
 ```bash
