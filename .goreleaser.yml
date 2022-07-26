@@ -1,5 +1,5 @@
 env:
-  - GO111MODULE=on
+  - CGO_ENABLED=0
 builds:
   - main: cmd/gcrgc/gcrgc.go
     goos:
@@ -11,6 +11,32 @@ builds:
       - amd64
       - arm
       - arm64
+dockers:
+  -
+    goarch: amd64
+    image_templates:
+    - "graillus/gcrgc:{{ .Version }}-amd64"
+    dockerfile: 'Dockerfile.goreleaser'
+    use: buildx
+    build_flag_templates:
+    - "--pull"
+    - "--platform=linux/amd64"
+    - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+    - "--label=org.opencontainers.image.url=https://github.com/graillus/gcrgc"
+    - "--label=org.opencontainers.image.source=https://github.com/graillus/gcrgc"
+    - "--label=org.opencontainers.image.description=A garbage collector tool for container registries"
+    - "--label=org.opencontainers.image.created={{ .Date }}"
+    - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+    - "--label=org.opencontainers.image.version={{ .Version }}"
+    - "--label=org.opencontainers.image.licenses=MIT"
+docker_manifests:
+- name_template: graillus/gcrgc:{{ .Version }}
+  image_templates:
+  - graillus/gcrgc:{{ .Version }}-amd64
+- name_template: graillus/gcrgc:latest
+  image_templates:
+  - graillus/gcrgc:{{ .Version }}-amd64
+
 release:
   prerelease: auto
 changelog:

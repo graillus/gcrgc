@@ -7,4 +7,6 @@ RUN go build -o bin/gcrgc cmd/gcrgc/gcrgc.go
 
 FROM alpine
 
-COPY --from=build /go/src/github.com/graillus/gcrgc/bin/gcrgc /usr/local/bin/gcrgc
+COPY --from=build /go/src/github.com/graillus/gcrgc/bin/gcrgc /usr/bin/gcrgc
+
+ENTRYPOINT ["/usr/bin/gcrgc"]
