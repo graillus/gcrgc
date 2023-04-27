@@ -197,6 +197,7 @@ func TestFilterImages(t *testing.T) {
 		filters := []ImageFilter{
 			UntaggedFilter{false},
 			TagNameFilter{[]string{"latest"}},
+			NewSemVerTagNameFilter(false),
 			NewTagNameRegexFilter([]string{"^(dev-)?[0-9]\\.[0-9]-(cli|fpm)$"}),
 		}
 
