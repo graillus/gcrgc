@@ -174,6 +174,10 @@ func NewSemVerTagNameFilter(enabled bool) *SemVerTagNameFilter {
 
 // Apply returns true if if no tag was in the exclusion list.
 func (f *SemVerTagNameFilter) Apply(img *docker.Image) bool {
+	if !f.enabled {
+		// Filter is disabled, image is eligible for deletion.
+		return true
+	}
 
 	return !img.HasTagRegexp(f.regex)
 }
